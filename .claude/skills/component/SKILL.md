@@ -32,7 +32,7 @@ Don't hand-roll a distilled version of the tool sequence here — call the relev
 
 ## Reference templates
 
-Use only when the MCP server returns no suitable match, or as a structural guide while adapting fetched source — these aren't in the fetched output itself.
+Use only when the MCP server returns no suitable match, or as a structural guide while adapting fetched source — these aren't in the fetched output itself. The `"use client"` directive below applies only on frameworks with React Server Components (Next.js App Router, etc.) — drop that line entirely on a plain client-rendered React app (Vite, CRA, Next.js Pages Router, Remix without RSC).
 
 ### Simple component (no variants)
 
@@ -105,7 +105,7 @@ export type { MyComponentProps }
 ### Radix UI primitive wrapper
 
 ```tsx
-"use client"
+"use client" // RSC frameworks only — omit on a plain client-rendered React app
 
 import * as React from "react"
 import * as SomePrimitive from "@radix-ui/react-some-primitive"
@@ -130,7 +130,7 @@ export { MyComponent }
 ### Client component (hooks / interactivity)
 
 ```tsx
-"use client"
+"use client" // RSC frameworks only — omit on a plain client-rendered React app
 
 import { useState } from "react"
 import { cn } from "@/lib/utils"

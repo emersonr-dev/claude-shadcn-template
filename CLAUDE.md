@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-> **Template note:** This is a starting skeleton for a Next.js/React + shadcn/ui project, carried over from an existing project's Claude Code setup. Sections marked `[CUSTOMIZE]` need this project's own detail; everything else is a convention meant to hold across projects on this stack. Delete this note once the file is filled in.
+> **Template note:** This is a starting skeleton for a React + shadcn/ui project — Next.js (App Router or Pages Router), Vite, Remix, Astro's React islands, TanStack Start, or any other React framework/setup shadcn/ui supports. Sections marked `[CUSTOMIZE]` need this project's own detail; everything else is a convention meant to hold across React frameworks. Delete this note once the file is filled in.
 
 ## Initial configuration
 
@@ -13,7 +13,7 @@ Environment variables (see `.env`, gitignored):
 
 ## Architecture
 
-`[CUSTOMIZE]` — describe the framework and version (Next.js App Router vs. Pages Router, React version), state management, data-fetching approach, and any build/runtime behavior that changes how code must be written (e.g. Next.js `cacheComponents` requiring `"use cache"` or Suspense boundaries). Add a short subsection per major integration this project has (a CMS, an API layer, auth), the way a real project would.
+`[CUSTOMIZE]` — describe the framework and version this project actually runs (Next.js App Router, Next.js Pages Router, Vite SPA, Remix, TanStack Start, etc.), whether it uses React Server Components at all, state management, data-fetching approach, and any build/runtime behavior that changes how code must be written (e.g. Next.js `cacheComponents` requiring `"use cache"` or Suspense boundaries — framework-specific, delete if not applicable). Add a short subsection per major integration this project has (a CMS, an API layer, auth), the way a real project would.
 
 ### `[CUSTOMIZE]` — domain-specific pipelines
 
@@ -34,9 +34,9 @@ This is a shadcn/ui-first project — these rules are strict, not stylistic pref
 - `[CUSTOMIZE]` Named exports only (no `export default`) for new `components/ui/*` and `components/providers/*` components — or pick a different export convention and state it here; whatever is chosen, keep it consistent project-wide and call out any exceptions (e.g. page/route files following a framework's own convention).
 - Always define and export a `Props` interface/type; accept and merge `className` via `cn()` from `@/lib/utils`.
 - Add `data-slot="component-name"` on the root element.
-- `"use client"` only when the component needs hooks, event handlers, or browser APIs.
+- `[CUSTOMIZE — RSC frameworks only]` If this project uses React Server Components (Next.js App Router, or another RSC-capable framework): add `"use client"` only when the component needs hooks, event handlers, or browser APIs. Plain client-rendered React apps (Vite, CRA, a Pages Router-only Next.js app, etc.) have no such directive — delete this bullet entirely in that case.
 - Use path aliases (`@/components/*`, `@/lib/*`, `@/hooks/*`, etc.) rather than relative `../../` imports.
-- No hardcoded colors — use the CSS custom property tokens defined in `[CUSTOMIZE: e.g. app/globals.css]`.
+- No hardcoded colors — use the CSS custom property tokens defined in `[CUSTOMIZE: e.g. app/globals.css for Next.js App Router, src/index.css for Vite]`.
 - Placement: reusable primitives → `components/ui/`; feature/page-specific → `components/`; Shadcn Studio blocks → `components/shadcn-studio/blocks/`; context/providers → `components/providers/`. `[CUSTOMIZE]` adjust to this project's actual structure if it differs.
 
 ## shadcn/ui workflow commands
