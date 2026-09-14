@@ -5,6 +5,10 @@ argument-hint: [what to change, e.g. "give the CTA button a shimmer effect"]
 
 Refine or update existing UI per this request, using the shadcn/studio MCP "Refine UI" workflow: $ARGUMENTS
 
+**Prerequisite check first**: this workflow needs the `shadcn-studio-mcp` MCP server connected, with a valid Shadcn Studio license (`EMAIL`/`LICENSE_KEY`). If `mcp__shadcn-studio-mcp__*` tools aren't available, skip straight to `npx shadcn@latest add <name> --overwrite` for a stock component update — or, if the request genuinely needs Studio's catalog and it's unreachable, stop and tell the user to configure the MCP server first (see this repo's README).
+
+Once `shadcn-studio-mcp` is available:
+
 1. **First check whether this is a Studio question at all.** If the request is just "update/fix this stock shadcn/ui primitive to its latest official source" with no Pro variant, theming, or Studio-specific content involved, skip this workflow entirely and run `npx shadcn@latest add <name> --overwrite` directly instead — see `.claude/skills/component/references/shadcn-studio-workflow.md` § "Plain shadcn/ui installs — skip the Studio workflow". Only continue with the steps below when the refine genuinely needs Studio's catalog (a newer Studio variant, Pro styling, etc.).
 2. Call `mcp__shadcn-studio-mcp__get-refine-instructions` and follow its collection phase — identify every component involved and fetch metadata for each (`get-component-meta-content`, using the raw component name, e.g. `button` not `shimmer-button`) — but do not install anything yet.
 3. Before collecting/installing, confirm the component hierarchy rule holds: prefer refining the existing `components/ui/*` component in place → only adopt a fetched Studio variant if it's actually needed. Run the comparison gate in `.claude/skills/component/references/shadcn-studio-workflow.md` § "Existing component vs. fetched Studio candidate" against the metadata just fetched — if the fetched candidate is structurally different from the current component (not just a styling tweak), stop and ask the user whether to refine in place or adopt the fetched variant before proceeding.

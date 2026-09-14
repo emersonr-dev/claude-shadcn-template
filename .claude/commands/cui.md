@@ -5,6 +5,10 @@ argument-hint: [what to build, e.g. "a pricing section with 3 tiers"]
 
 Build the following with the shadcn/studio MCP "Create UI" workflow: $ARGUMENTS
 
+**Prerequisite check first**: this workflow needs the `shadcn-studio-mcp` MCP server connected, with a valid Shadcn Studio license (`EMAIL`/`LICENSE_KEY`) wired into `components.json`'s `@ss-*` registries. If `mcp__shadcn-studio-mcp__*` tools aren't available, stop and tell the user to configure the MCP server first (see this repo's README) — or, if this project intentionally has no Shadcn Studio license, skip this command entirely and use `npx shadcn@latest add <name>` directly instead.
+
+Once `shadcn-studio-mcp` is available:
+
 1. Call `mcp__shadcn-studio-mcp__get-create-instructions` and follow its collection phase — identify every block needed and fetch metadata for each (`get-blocks-metadata` → `get-block-meta-content`) — but do not install anything yet.
 2. Before collecting/installing any fetched candidate, confirm the component hierarchy rule holds: prefer an existing `components/ui/*` component → install a missing shadcn/ui component → extend/compose shadcn/ui primitives → never raw Tailwind `<div>`/`<button>` when a shadcn/ui equivalent exists. Run the comparison gate in `.claude/skills/component/references/shadcn-studio-workflow.md` § "Existing component vs. fetched Studio candidate" against the metadata just fetched:
    - Fetched candidate matches an existing project component's structure → reuse/extend that component; skip the install steps below.
