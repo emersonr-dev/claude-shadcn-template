@@ -20,8 +20,8 @@ Before using this template in a project:
 
 ```
 CLAUDE.md                                              # skeleton — fill in [CUSTOMIZE] sections
-components.json.nextjs.example                         # shadcn/ui config for Next.js (rsc: true)
-components.json.react.example                          # shadcn/ui config for Vite/CRA/other client-only React (rsc: false)
+components.nextjs.example.json                         # shadcn/ui config for Next.js (rsc: true)
+components.react.example.json                          # shadcn/ui config for Vite/CRA/other client-only React (rsc: false)
 .claude/
 ├── settings.json                                      # MCP + bash permission allowlist
 ├── commands/
