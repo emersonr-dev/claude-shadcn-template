@@ -1,4 +1,4 @@
-# claude-shadcn-react-template
+# claude-shadcn-template
 
 A reusable Claude Code setup for React-based projects built on shadcn/ui. It packages four slash commands that drive the [Shadcn Studio](https://shadcnstudio.com) MCP server through a consistent, hierarchy-respecting workflow, a `component` skill that ties them together, and a `CLAUDE.md` skeleton to start a new project's Claude Code configuration from — so every new repo doesn't reinvent the same rules about when to reuse a component, when to install one, and when to skip the paid workflow entirely.
 
