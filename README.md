@@ -54,46 +54,66 @@ components.registries.snippet.json                     # Shadcn Studio registrie
 - **`[CUSTOMIZE: e.g. ...]`** — same, with a worked example of the likely shape included in the marker itself.
 - **`[CUSTOMIZE — condition]`** — conditional: only fill it in if the condition holds; otherwise delete the whole bullet, not just the marker.
 
-Worked examples below, using the project this template was extracted from (`dev-portfolio`: Next.js App Router, RSC) — plus one non-RSC case to show the conditional marker's other branch.
+Worked examples below use a single mocked project — **Pulse**, a fictional AI-powered customer support SaaS (Next.js App Router, Postgres via Prisma, Stripe billing, OpenAI for ticket triage) — to show how the same set of markers gets filled in for a real-shaped commercial app rather than a simple content site. A non-RSC counterexample is included for the conditional marker's other branch.
 
 **Env vars** (line 12):
 ```diff
 - `[CUSTOMIZE]` — add this project's own required env vars (API keys, database URLs, auth secrets, etc.).
-+ `NOTION_CLIENT_ID`, `NOTION_DATABASE_ID` — required for the blog to fetch content from Notion.
-+ `APP_ENV` — environment flag read by the deploy config.
++ `DATABASE_URL` — Postgres connection string (Prisma).
++ `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` — subscription billing and webhook verification.
++ `OPENAI_API_KEY` — powers AI-drafted ticket responses and sentiment tagging.
 ```
 
 **Architecture** (line 16):
 ```diff
 - `[CUSTOMIZE]` — describe the framework and version this project actually runs...
-+ Next.js 16 (App Router) + React 19 personal portfolio and Notion-backed blog. Tailwind CSS v4
-+ uses CSS-based config (`app/globals.css` `@theme`, no `tailwind.config.*`). `cacheComponents`
-+ is enabled (`next.config.ts`) — new server-side data-fetching functions must use `"use cache"`
-+ or be wrapped in Suspense, or the build breaks.
++ Next.js 15 (App Router) + React 19 multi-tenant SaaS. Prisma/Postgres for orgs, users, and
++ support tickets. Server Actions handle mutations; TanStack Query handles client-side cache
++ for anything polled (live ticket status, agent presence). Stripe Checkout + Customer Portal
++ handle billing, driven entirely by webhooks — no plan/seat state is trusted from the client.
 ```
 
 **Domain-specific pipeline** (the `### [CUSTOMIZE]` heading) — replaced with a real section entirely:
 ```diff
 - ### `[CUSTOMIZE]` — domain-specific pipelines
 - If this project has a recurring "add a new X" task... [generic shape instructions]
-+ ### Notion content pipeline
-+ `lib/posts.ts` is the single integration point with the Notion API (`@notionhq/client`).
-+ Adding a new Notion block type, or touching how posts are fetched/cached/rendered?
-+ See the `notion-block-type` skill.
++ ### AI ticket triage pipeline
++ `lib/ai/triage.ts` is the single integration point with OpenAI — classifies incoming tickets
++ (`TicketCategory`) and drafts a suggested reply. Adding a new ticket category or a new
++ AI-derived field on a ticket? See the `ticket-triage` skill for the exact multi-file contract
++ (schema, triage function, and the agent-facing UI that surfaces it).
+```
+
+**Component export convention** (line 34) — this project deliberately picks something other than the template default, which is exactly what the marker is for:
+```diff
+- `[CUSTOMIZE]` Named exports only (no `export default`) for new `components/ui/*` and
+  `components/providers/*` components — or pick a different export convention and state it
+  here; whatever is chosen, keep it consistent project-wide and call out any exceptions...
++ Named exports only, project-wide, with no exceptions — including `app/**/page.tsx` and
++ `layout.tsx` route files, which elsewhere might keep a framework's `export default`
++ convention. Pulse enforces this via an ESLint rule so it never silently drifts.
 ```
 
 **The conditional marker, both directions** (the `"use client"` bullet):
 ```diff
-On a Next.js App Router project (RSC applies) — keep the rule, drop only the marker:
+On Pulse (Next.js App Router — RSC applies) — keep the rule, drop only the marker:
 - `[CUSTOMIZE — RSC frameworks only]` If this project uses React Server Components...
-+ `"use client"` only when the component needs hooks, event handlers, or browser APIs —
-+ most blog/content rendering is server components.
++ `"use client"` only where it's load-bearing: the live ticket feed (websocket subscription),
++ the Stripe Checkout button, and the AI reply editor. Ticket list/detail pages themselves stay
++ server components and fetch directly via Prisma.
 
-On a Vite SPA (no RSC at all) — delete the entire bullet, since there's no
-"use client" directive to have an opinion about. Nothing replaces it.
+On a Vite SPA rebuild of the same product (no RSC at all) — delete the entire bullet, since
+there's no "use client" directive to have an opinion about. Nothing replaces it.
 ```
 
-The pattern holds across every marker in the file: read what the placeholder is asking for, write the real fact (or delete the bullet, for a conditional marker that doesn't apply), and leave no `[CUSTOMIZE]` text behind in the finished file.
+**Colors file** (line 39):
+```diff
+- ...tokens defined in `[CUSTOMIZE: e.g. app/globals.css for Next.js App Router, src/index.css for Vite]`.
++ ...tokens defined in `app/globals.css` — Pulse ships a light/dark pair plus a per-org accent
++ color (`--accent`) that tenants can override from their branding settings.
+```
+
+The pattern holds across every marker in the file: read what the placeholder is asking for, write the real fact for *this* project (or delete the bullet, for a conditional marker that doesn't apply), and leave no `[CUSTOMIZE]` text behind in the finished file.
 
 ## Usage
 
