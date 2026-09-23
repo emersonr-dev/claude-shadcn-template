@@ -10,7 +10,7 @@ Extracted from a working project's Claude Code setup after several rounds of fix
 
 Before using this template in a project:
 
-- **A React project already scaffolded** with shadcn/ui initialized (a `components.json` at the repo root — see [Installation](#installation) for which variant to use).
+- **A React project already scaffolded, with `npx shadcn@latest init` already run against it** — this template never ships a static `components.json` to copy over yours, since `init` is what correctly detects this project's actual framework, Tailwind version, and path aliases. See [Installation](#installation) for what to merge in afterward.
 - **[Claude Code](https://claude.com/claude-code)** installed and running against the target repo.
 - **The `shadcn-studio-mcp` MCP server configured and connected**, if you intend to use `/cui`, `/rui`, `/iui`, or `/ftc`. This is a *separate, paid* product ([Shadcn Studio](https://shadcnstudio.com) by ThemeSelection) layered on top of the free shadcn/ui registry — it needs its own `EMAIL`/`LICENSE_KEY` credentials wired into `components.json`. Each command checks for this connection before doing anything and tells you what's missing if it isn't there.
 - **A Figma MCP server**, additionally, only if you intend to use `/ftc` (Figma-to-code). Not included in this template — configure one separately (e.g. `claude mcp add`).
@@ -20,8 +20,7 @@ Before using this template in a project:
 
 ```
 CLAUDE.md                                              # skeleton — fill in [CUSTOMIZE] sections
-components.nextjs.example.json                         # shadcn/ui config for Next.js (rsc: true)
-components.react.example.json                          # shadcn/ui config for Vite/CRA/other client-only React (rsc: false)
+components.registries.snippet.json                     # Shadcn Studio registries block — merge into components.json from `init`, not a copy-over
 .claude/
 ├── settings.json                                      # MCP + bash permission allowlist
 ├── commands/
@@ -40,10 +39,8 @@ components.react.example.json                          # shadcn/ui config for Vi
 ## Installation
 
 1. Copy `CLAUDE.md` and `.claude/` into the new repo's root.
-2. Copy whichever `components.json.*.example` matches the framework to `components.json` at the repo root — see [Framework compatibility](#framework-compatibility) for which one:
-   - Next.js (or another React Server Components framework) → `components.json.nextjs.example`
-   - Vite, CRA, Next.js Pages Router without RSC, or any other client-only React setup → `components.json.react.example`
-3. Set `EMAIL` and `LICENSE_KEY` in `.env` (gitignored) to your Shadcn Studio credentials, matching what `components.json`'s `@ss-*` registries expect.
+2. If `components.json` doesn't exist yet in the target repo, run `npx shadcn@latest init` **first** and answer its prompts — it detects this project's actual framework, Tailwind version, and path aliases far more reliably than any static file this template could ship. Never copy a pre-made `components.json` over one `init` would generate; the two can drift (e.g. a stale `tailwind.config.ts` path on a project that's actually on Tailwind v4's CSS-based config, which has none).
+3. Merge `components.registries.snippet.json`'s `registries` block into the `components.json` that `init` produced (it's the one thing `init` never adds on its own — Shadcn Studio's registries are a separate paid product layered on top of the official shadcn/ui registry). Set `EMAIL` and `LICENSE_KEY` in `.env` (gitignored) to your Shadcn Studio credentials, matching what that block expects.
 4. Fill in every `[CUSTOMIZE]` block in `CLAUDE.md`: env vars beyond the Studio credentials, this project's actual architecture/framework, its component export convention, where its color tokens live, its component placement rules if they differ from the defaults, and (if applicable) a domain-specific "extension contract" skill for whatever this project's own recurring "add a new X" task is.
 5. **No Shadcn Studio license?** Delete `.claude/commands/{cui,rui,iui,ftc}.md`, delete the Studio-specific sections of `.claude/skills/component/SKILL.md` and its `references/` directory, drop the `@ss-*` registries from `components.json`, and rely on `npx shadcn@latest add` directly. `CLAUDE.md` already calls this branch out inline.
 6. Adjust `.claude/settings.json`'s bash allowlist to this project's actual package manager and scripts — it assumes `npm run build`/`npm run lint`; swap in `pnpm`/`yarn`/`bun` equivalents as needed.
@@ -66,16 +63,15 @@ For anything that's just a stock shadcn/ui component with no Pro/Studio variant 
 
 ## Framework compatibility
 
-shadcn/ui itself supports multiple React frameworks, and so does everything in this template — the commands and skill only ever call MCP tools or `npx shadcn@latest add`, neither of which is Next.js-specific. The two places that genuinely differ per framework are called out explicitly rather than papered over:
+shadcn/ui itself supports multiple React frameworks, and so does everything in this template — the commands and skill only ever call MCP tools or `npx shadcn@latest add`, neither of which is Next.js-specific. `components.json` itself is never a per-framework concern here: it always comes from that project's own `npx shadcn@latest init` run, which already knows how to detect Next.js App Router vs. Pages Router vs. Vite vs. anything else it supports — this template only ever adds the registries snippet on top, regardless of framework. The remaining places that genuinely differ per framework are called out explicitly rather than papered over:
 
 | Concern | Next.js App Router (or other RSC framework) | Vite / CRA / Pages Router / non-RSC |
 |---|---|---|
-| `components.json` | copy `components.json.nextjs.example` — `rsc: true` | copy `components.json.react.example` — `rsc: false` |
 | `"use client"` directive | keep — required wherever a component uses hooks/events/browser APIs | delete entirely — this directive doesn't exist outside RSC |
 | Image/asset allowlisting (`/ftc` only) | check `next.config`'s remote image domains | skip — most non-Next setups have no such allowlist |
 | Page/route file (`/ftc` only) | `page.tsx` | this project's equivalent route/page component |
 
-If a future React framework isn't Next.js or a plain Vite-style SPA, start from `components.json.react.example` and adjust `rsc`/`tailwind` per that framework's own shadcn/ui `init` support — nothing else in this template needs to change, since the commands and skill don't reference a framework by name anywhere except the two spots in the table above.
+If a future React framework isn't Next.js or a plain Vite-style SPA, its own `shadcn@latest init` support handles the framework-specific `components.json` detection — nothing in this template needs to change, since the commands and skill don't reference a framework by name anywhere except the table above.
 
 ## Design notes
 
@@ -84,6 +80,7 @@ If a future React framework isn't Next.js or a plain Vite-style SPA, start from 
 - **Plain CLI fallback is explicit.** Shadcn Studio is a paid layer on top of the official shadcn/ui registry. Every doc that touches installs says outright: if the target is a stock component, skip Studio and use `npx shadcn@latest add` — don't route everything through the paid workflow by default.
 - **Framework specifics are named, not assumed.** React Server Components conventions (`"use client"`, `rsc: true`) used to be written as if every consumer would be a Next.js App Router project. They're now called out as conditional wherever they appear, so a Vite/CRA/Pages-Router project doesn't inherit dead instructions.
 - **Prerequisites fail fast.** Every command checks its MCP dependency before doing anything else, so a missing connection or license surfaces immediately with a clear next step instead of a confusing failure mid-workflow.
+- **`components.json` is generated, never hand-copied.** This template used to ship two full static `components.json.*.example` files to copy over the target project's own — including a hardcoded `"tailwind": { "config": "tailwind.config.ts" }` that's simply wrong on a Tailwind v4 project (official guidance: leave that field `""` when there's no config file to point at). The only part of `components.json` this template actually needs to add is the Shadcn Studio `registries` block, which `shadcn@latest init` never generates on its own — so that's the only piece shipped now, as `components.registries.snippet.json`, meant to be merged into whatever `init` produces rather than replacing it.
 
 ## Extending this template
 
