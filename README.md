@@ -46,6 +46,55 @@ components.registries.snippet.json                     # Shadcn Studio registrie
 6. Adjust `.claude/settings.json`'s bash allowlist to this project's actual package manager and scripts — it assumes `npm run build`/`npm run lint`; swap in `pnpm`/`yarn`/`bun` equivalents as needed.
 7. Run `/init` in Claude Code afterward so it fills in what it can infer from the actual codebase, then review its output against what you wrote by hand in step 4.
 
+## Filling in `[CUSTOMIZE]`
+
+`[CUSTOMIZE]` is a plain-text marker in `CLAUDE.md` — nothing reads or expands it automatically. It flags a spot where the skeleton has generic guidance describing *what kind* of detail belongs there, standing in for this project's actual fact. "Filling it in" means replacing that guidance with the real answer, then removing the marker so nothing in the finished file still reads as a placeholder. Three variants appear:
+
+- **Plain `[CUSTOMIZE]`** — replace with free text.
+- **`[CUSTOMIZE: e.g. ...]`** — same, with a worked example of the likely shape included in the marker itself.
+- **`[CUSTOMIZE — condition]`** — conditional: only fill it in if the condition holds; otherwise delete the whole bullet, not just the marker.
+
+Worked examples below, using the project this template was extracted from (`dev-portfolio`: Next.js App Router, RSC) — plus one non-RSC case to show the conditional marker's other branch.
+
+**Env vars** (line 12):
+```diff
+- `[CUSTOMIZE]` — add this project's own required env vars (API keys, database URLs, auth secrets, etc.).
++ `NOTION_CLIENT_ID`, `NOTION_DATABASE_ID` — required for the blog to fetch content from Notion.
++ `APP_ENV` — environment flag read by the deploy config.
+```
+
+**Architecture** (line 16):
+```diff
+- `[CUSTOMIZE]` — describe the framework and version this project actually runs...
++ Next.js 16 (App Router) + React 19 personal portfolio and Notion-backed blog. Tailwind CSS v4
++ uses CSS-based config (`app/globals.css` `@theme`, no `tailwind.config.*`). `cacheComponents`
++ is enabled (`next.config.ts`) — new server-side data-fetching functions must use `"use cache"`
++ or be wrapped in Suspense, or the build breaks.
+```
+
+**Domain-specific pipeline** (the `### [CUSTOMIZE]` heading) — replaced with a real section entirely:
+```diff
+- ### `[CUSTOMIZE]` — domain-specific pipelines
+- If this project has a recurring "add a new X" task... [generic shape instructions]
++ ### Notion content pipeline
++ `lib/posts.ts` is the single integration point with the Notion API (`@notionhq/client`).
++ Adding a new Notion block type, or touching how posts are fetched/cached/rendered?
++ See the `notion-block-type` skill.
+```
+
+**The conditional marker, both directions** (the `"use client"` bullet):
+```diff
+On a Next.js App Router project (RSC applies) — keep the rule, drop only the marker:
+- `[CUSTOMIZE — RSC frameworks only]` If this project uses React Server Components...
++ `"use client"` only when the component needs hooks, event handlers, or browser APIs —
++ most blog/content rendering is server components.
+
+On a Vite SPA (no RSC at all) — delete the entire bullet, since there's no
+"use client" directive to have an opinion about. Nothing replaces it.
+```
+
+The pattern holds across every marker in the file: read what the placeholder is asking for, write the real fact (or delete the bullet, for a conditional marker that doesn't apply), and leave no `[CUSTOMIZE]` text behind in the finished file.
+
 ## Usage
 
 Once installed, four slash commands are available in Claude Code:
