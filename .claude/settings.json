@@ -6,5 +6,20 @@
       "Bash(npm run build)",
       "Bash(npm run lint)"
     ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "mcp__shadcn-studio-mcp__collect_selected_blocks|mcp__shadcn-studio-mcp__collect_selected_components|mcp__shadcn-studio-mcp__get_add_command_for_items|mcp__shadcn-studio-mcp__get_add_command_for_components|mcp__shadcn-studio-mcp__install-theme",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR}/.claude/hooks/check-shadcn-studio.sh\"",
+            "timeout": 10,
+            "statusMessage": "Checking shadcn/ui + Shadcn Studio setup..."
+          }
+        ]
+      }
+    ]
   }
 }

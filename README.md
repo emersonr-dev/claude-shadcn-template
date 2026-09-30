@@ -22,7 +22,9 @@ Before using this template in a project:
 CLAUDE.md                                              # skeleton — fill in [CUSTOMIZE] sections
 components.registries.snippet.json                     # Shadcn Studio registries block — merge into components.json from `init`, not a copy-over
 .claude/
-├── settings.json                                      # MCP + bash permission allowlist
+├── settings.json                                      # MCP + bash permission allowlist, PreToolUse hook wiring
+├── hooks/
+│   └── check-shadcn-studio.sh                         # PreToolUse hook: hard-gates Studio install calls (see below)
 ├── commands/
 │   ├── cui.md                                         # /cui  — create a new block/section
 │   ├── rui.md                                         # /rui  — refine/update an existing component
@@ -35,6 +37,17 @@ components.registries.snippet.json                     # Shadcn Studio registrie
             ├── shadcn-studio-workflow.md               # shared workflow rules + reuse-vs-install comparison gate
             └── figma-to-shadcn-mapping.md               # Figma element -> shadcn/ui component table
 ```
+
+## Enforcement: prose checks vs. the PreToolUse hook
+
+The commands' "Prerequisite check first" steps are prose the model is expected to read and follow — reliable in practice, but not a guarantee, since nothing stops a sufficiently unusual prompt from skipping past written instructions. `.claude/hooks/check-shadcn-studio.sh`, wired into `.claude/settings.json`'s `PreToolUse` hooks, backs that up with a deterministic check the model cannot talk its way around:
+
+- Matches only the Studio tools that actually install something (`collect_selected_blocks`, `collect_selected_components`, `get_add_command_for_items`, `get_add_command_for_components`, `install-theme`) — read-only fetch/metadata calls are never touched, so browsing candidates always works.
+- No `components.json` at all → **deny**. This isn't a shadcn/ui project yet; nothing to install into.
+- `components.json` exists but has no `@ss-components` registry → **ask**. Likely just missing the Studio registries merge (step 3 below), not a structural problem — so it defers to you rather than hard-blocking.
+- Registries present → **allow**, normal flow continues.
+
+The prose checks stay because they carry judgment a hook can't (e.g. `/rui`'s "is this even a Studio question" branch); the hook exists because "the model complied with the instructions" isn't the same guarantee as "the harness enforced it."
 
 ## Installation
 
