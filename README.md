@@ -4,8 +4,6 @@ A reusable Claude Code setup for React-based projects built on shadcn/ui. It pac
 
 It works with any React framework shadcn/ui supports — Next.js (App Router or Pages Router), Vite, Remix, TanStack Start, Astro's React islands, or plain React with manual setup.
 
-Extracted from a working project's Claude Code setup after several rounds of fixing real gaps: installing a component before checking whether one already covered the request, no fallback to the plain shadcn/ui CLI for stock components, workflow docs split across `.github/instructions/*` and `.claude/`, and Next.js-only assumptions baked in as if they held everywhere. Each of those fixes is called out in [Design notes](#design-notes).
-
 ## Prerequisites
 
 Before using this template in a project:
@@ -43,17 +41,21 @@ components.registries.snippet.json                     # Shadcn Studio registrie
 The commands' "Prerequisite check first" steps are prose the model is expected to read and follow — reliable in practice, but not a guarantee, since nothing stops a sufficiently unusual prompt from skipping past written instructions. `.claude/hooks/check-shadcn-studio.sh`, wired into `.claude/settings.json`'s `PreToolUse` hooks, backs that up with a deterministic check the model cannot talk its way around. It's wired to two entry points:
 
 - **The five Studio MCP tools that actually install something** (`collect_selected_blocks`, `collect_selected_components`, `get_add_command_for_items`, `get_add_command_for_components`, `install-theme`) — gated unconditionally, since calling them is inherently a Studio action. Read-only fetch/metadata calls are never matched, so browsing candidates always works.
-- **Any `Bash` call starting with `npx shadcn`** — only gated if the command actually references an `@ss-` registry item (e.g. `npx shadcn add @ss-components/fancy-card`); a plain `npx shadcn add button` is left alone, since that never touches Shadcn Studio. This closes the gap where someone (or the model) could bypass the MCP-only gate by running the Studio install directly via Bash instead of through `/cui`/`/rui`/`/iui`.
+- **Any `Bash` call starting with `npx shadcn`** — only gated if the command actually references an `@ss-` registry item (e.g. `npx shadcn add @ss-components/fancy-card`); a plain `npx shadcn add button` is left alone, since that never touches Shadcn Studio. This means a Studio install run directly through Bash goes through the same check as one run through `/cui`/`/rui`/`/iui`.
 
 Both entry points share the same decision logic:
 
 - No `components.json` at all → **deny**. This isn't a shadcn/ui project yet; nothing to install into.
 - `components.json` exists but has no `@ss-components` registry → **ask**. Likely just missing the Studio registries merge (step 3 below), not a structural problem — so it defers to you rather than hard-blocking.
-- Registries present (or the Bash command doesn't touch Studio at all) → **allow**, normal flow continues.
+- Registries present (or the Bash command doesn't touch Studio at all) → **no opinion**: the hook exits silently and your normal permission settings (allowlist, Auto Mode, prompts) decide. The hook only ever denies or asks, never auto-approves.
 
 The prose checks stay because they carry judgment a hook can't (e.g. `/rui`'s "is this even a Studio question" branch); the hook exists because "the model complied with the instructions" isn't the same guarantee as "the harness enforced it."
 
-**Known limitation:** the `ask` decision's actual behavior under Claude Code's Auto Mode (a classifier layer that sits alongside hooks and `permissions.allow/ask/deny`) hasn't been empirically confirmed — a live test attempt was inconclusive because `.claude/settings.local.json` created mid-session isn't picked up by the settings watcher until `/hooks` is opened or the session restarts, so the test hook may simply never have loaded. The `deny` path doesn't depend on this and is unaffected either way. If you rely on the `ask` path, confirm it actually prompts you in your own setup before trusting it.
+Notes on the hook:
+
+- `ask` shows you a confirmation prompt even in Auto Mode; answering No blocks the call.
+- Hook output must be valid JSON. If it isn't, Claude Code ignores the hook, so the script builds its output with `jq`.
+- After editing hook settings mid-session, open `/hooks` or restart Claude Code so they load.
 
 ## Installation
 
@@ -164,9 +166,9 @@ If a future React framework isn't Next.js or a plain Vite-style SPA, its own `sh
 ## Design notes
 
 - **Pointer, not copy.** `SKILL.md` and the reference docs point at the vendor's `get-*-instructions` MCP tools and at each other rather than embedding a frozen snapshot of behavior that can drift out of date.
-- **Fetch → gate → install → convert.** Every command fetches metadata first (no side effects), runs the reuse-vs-install comparison gate against what's already in the project, and only then installs — never the reverse. This was a deliberate fix after an earlier version listed the install step before the hierarchy check, which read as "install then reconcile" on a literal pass.
+- **Fetch → gate → install → convert.** Every command fetches metadata first (no side effects), runs the reuse-vs-install comparison gate against what's already in the project, and only then installs — never the reverse.
 - **Plain CLI fallback is explicit.** Shadcn Studio is a paid layer on top of the official shadcn/ui registry. Every doc that touches installs says outright: if the target is a stock component, skip Studio and use `npx shadcn@latest add` — don't route everything through the paid workflow by default.
-- **Framework specifics are named, not assumed.** React Server Components conventions (`"use client"`, `rsc: true`) used to be written as if every consumer would be a Next.js App Router project. They're now called out as conditional wherever they appear, so a Vite/CRA/Pages-Router project doesn't inherit dead instructions.
+- **Framework specifics are named, not assumed.** React Server Components conventions (`"use client"`, `rsc: true`) are marked as conditional wherever they appear, so a Vite/CRA/Pages Router project doesn't inherit instructions that don't apply.
 - **Prerequisites fail fast.** Every command checks its MCP dependency before doing anything else, so a missing connection or license surfaces immediately with a clear next step instead of a confusing failure mid-workflow.
 - **`components.json` is generated, never hand-copied.** `shadcn@latest init` already detects a project's real framework, Tailwind version, and path aliases better than any static file this template could ship — a hand-maintained copy can only drift from that (e.g. asserting a `tailwind.config.ts` path on a project that's actually on Tailwind v4's CSS-based config, which has none). The one thing `init` never adds on its own is the Shadcn Studio `registries` block, since that's a separate paid product's config — so that's the only piece this template ships, as `components.registries.snippet.json`, meant to be merged into whatever `init` produces rather than replacing it.
 
