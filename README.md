@@ -22,7 +22,7 @@ components.registries.snippet.json                     # Shadcn Studio registrie
 .claude/
 ├── settings.json                                      # MCP + bash permission allowlist, PreToolUse hook wiring
 ├── hooks/
-│   └── check-shadcn-studio.sh                         # PreToolUse hook: hard-gates Studio install calls (see below)
+│   └── check-shadcn-studio.sh                         # PreToolUse hook: hard-gates Studio install calls (see "Enforcement" at the end)
 ├── commands/
 │   ├── cui.md                                         # /cui  — create a new block/section
 │   ├── rui.md                                         # /rui  — refine/update an existing component
@@ -35,27 +35,6 @@ components.registries.snippet.json                     # Shadcn Studio registrie
             ├── shadcn-studio-workflow.md               # shared workflow rules + reuse-vs-install comparison gate
             └── figma-to-shadcn-mapping.md               # Figma element -> shadcn/ui component table
 ```
-
-## Enforcement: prose checks vs. the PreToolUse hook
-
-The commands' "Prerequisite check first" steps are prose the model is expected to read and follow — reliable in practice, but not a guarantee, since nothing stops a sufficiently unusual prompt from skipping past written instructions. `.claude/hooks/check-shadcn-studio.sh`, wired into `.claude/settings.json`'s `PreToolUse` hooks, backs that up with a deterministic check the model cannot talk its way around. It's wired to two entry points:
-
-- **The five Studio MCP tools that actually install something** (`collect_selected_blocks`, `collect_selected_components`, `get_add_command_for_items`, `get_add_command_for_components`, `install-theme`) — gated unconditionally, since calling them is inherently a Studio action. Read-only fetch/metadata calls are never matched, so browsing candidates always works.
-- **Any `Bash` call starting with `npx shadcn`** — only gated if the command actually references an `@ss-` registry item (e.g. `npx shadcn add @ss-components/fancy-card`); a plain `npx shadcn add button` is left alone, since that never touches Shadcn Studio. This means a Studio install run directly through Bash goes through the same check as one run through `/cui`/`/rui`/`/iui`.
-
-Both entry points share the same decision logic:
-
-- No `components.json` at all → **deny**. This isn't a shadcn/ui project yet; nothing to install into.
-- `components.json` exists but has no `@ss-components` registry → **ask**. Likely just missing the Studio registries merge (step 3 below), not a structural problem — so it defers to you rather than hard-blocking.
-- Registries present (or the Bash command doesn't touch Studio at all) → **no opinion**: the hook exits silently and your normal permission settings (allowlist, Auto Mode, prompts) decide. The hook only ever denies or asks, never auto-approves.
-
-The prose checks stay because they carry judgment a hook can't (e.g. `/rui`'s "is this even a Studio question" branch); the hook exists because "the model complied with the instructions" isn't the same guarantee as "the harness enforced it."
-
-Notes on the hook:
-
-- `ask` shows you a confirmation prompt even in Auto Mode; answering No blocks the call.
-- Hook output must be valid JSON. If it isn't, Claude Code ignores the hook, so the script builds its output with `jq`.
-- After editing hook settings mid-session, open `/hooks` or restart Claude Code so they load.
 
 ## Installation
 
@@ -175,3 +154,24 @@ If a future React framework isn't Next.js or a plain Vite-style SPA, its own `sh
 ## Extending this template
 
 If a project needs a recurring "add a new X" pipeline of its own (a CMS block type, a form field type, a new API resource type, etc.), write it as its own skill under `.claude/skills/`, shaped as an extension contract: where the relevant files live, the exact ordered list of files to touch for a new instance, and a checklist — see `CLAUDE.md`'s "domain-specific pipelines" section for the shape. Not included here, since it's inherently specific to each project's own domain.
+
+## Enforcement: prose checks vs. the PreToolUse hook
+
+The commands' "Prerequisite check first" steps are prose the model is expected to read and follow — reliable in practice, but not a guarantee, since nothing stops a sufficiently unusual prompt from skipping past written instructions. `.claude/hooks/check-shadcn-studio.sh`, wired into `.claude/settings.json`'s `PreToolUse` hooks, backs that up with a deterministic check the model cannot talk its way around. It's wired to two entry points:
+
+- **The five Studio MCP tools that actually install something** (`collect_selected_blocks`, `collect_selected_components`, `get_add_command_for_items`, `get_add_command_for_components`, `install-theme`) — gated unconditionally, since calling them is inherently a Studio action. Read-only fetch/metadata calls are never matched, so browsing candidates always works.
+- **Any `Bash` call starting with `npx shadcn`** — only gated if the command actually references an `@ss-` registry item (e.g. `npx shadcn add @ss-components/fancy-card`); a plain `npx shadcn add button` is left alone, since that never touches Shadcn Studio. This means a Studio install run directly through Bash goes through the same check as one run through `/cui`/`/rui`/`/iui`.
+
+Both entry points share the same decision logic:
+
+- No `components.json` at all → **deny**. This isn't a shadcn/ui project yet; nothing to install into.
+- `components.json` exists but has no `@ss-components` registry → **ask**. Likely just missing the Studio registries merge (step 3 of [Installation](#installation)), not a structural problem — so it defers to you rather than hard-blocking.
+- Registries present (or the Bash command doesn't touch Studio at all) → **no opinion**: the hook exits silently and your normal permission settings (allowlist, Auto Mode, prompts) decide. The hook only ever denies or asks, never auto-approves.
+
+The prose checks stay because they carry judgment a hook can't (e.g. `/rui`'s "is this even a Studio question" branch); the hook exists because "the model complied with the instructions" isn't the same guarantee as "the harness enforced it."
+
+Notes on the hook:
+
+- `ask` shows you a confirmation prompt even in Auto Mode; answering No blocks the call.
+- Hook output must be valid JSON. If it isn't, Claude Code ignores the hook, so the script builds its output with `jq`.
+- After editing hook settings mid-session, open `/hooks` or restart Claude Code so they load.
