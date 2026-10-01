@@ -19,6 +19,18 @@
             "statusMessage": "Checking shadcn/ui + Shadcn Studio setup..."
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR}/.claude/hooks/check-shadcn-studio.sh\"",
+            "if": "Bash(npx shadcn*)",
+            "timeout": 10,
+            "statusMessage": "Checking shadcn/ui + Shadcn Studio setup..."
+          }
+        ]
       }
     ]
   }

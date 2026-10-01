@@ -40,14 +40,20 @@ components.registries.snippet.json                     # Shadcn Studio registrie
 
 ## Enforcement: prose checks vs. the PreToolUse hook
 
-The commands' "Prerequisite check first" steps are prose the model is expected to read and follow — reliable in practice, but not a guarantee, since nothing stops a sufficiently unusual prompt from skipping past written instructions. `.claude/hooks/check-shadcn-studio.sh`, wired into `.claude/settings.json`'s `PreToolUse` hooks, backs that up with a deterministic check the model cannot talk its way around:
+The commands' "Prerequisite check first" steps are prose the model is expected to read and follow — reliable in practice, but not a guarantee, since nothing stops a sufficiently unusual prompt from skipping past written instructions. `.claude/hooks/check-shadcn-studio.sh`, wired into `.claude/settings.json`'s `PreToolUse` hooks, backs that up with a deterministic check the model cannot talk its way around. It's wired to two entry points:
 
-- Matches only the Studio tools that actually install something (`collect_selected_blocks`, `collect_selected_components`, `get_add_command_for_items`, `get_add_command_for_components`, `install-theme`) — read-only fetch/metadata calls are never touched, so browsing candidates always works.
+- **The five Studio MCP tools that actually install something** (`collect_selected_blocks`, `collect_selected_components`, `get_add_command_for_items`, `get_add_command_for_components`, `install-theme`) — gated unconditionally, since calling them is inherently a Studio action. Read-only fetch/metadata calls are never matched, so browsing candidates always works.
+- **Any `Bash` call starting with `npx shadcn`** — only gated if the command actually references an `@ss-` registry item (e.g. `npx shadcn add @ss-components/fancy-card`); a plain `npx shadcn add button` is left alone, since that never touches Shadcn Studio. This closes the gap where someone (or the model) could bypass the MCP-only gate by running the Studio install directly via Bash instead of through `/cui`/`/rui`/`/iui`.
+
+Both entry points share the same decision logic:
+
 - No `components.json` at all → **deny**. This isn't a shadcn/ui project yet; nothing to install into.
 - `components.json` exists but has no `@ss-components` registry → **ask**. Likely just missing the Studio registries merge (step 3 below), not a structural problem — so it defers to you rather than hard-blocking.
-- Registries present → **allow**, normal flow continues.
+- Registries present (or the Bash command doesn't touch Studio at all) → **allow**, normal flow continues.
 
 The prose checks stay because they carry judgment a hook can't (e.g. `/rui`'s "is this even a Studio question" branch); the hook exists because "the model complied with the instructions" isn't the same guarantee as "the harness enforced it."
+
+**Known limitation:** the `ask` decision's actual behavior under Claude Code's Auto Mode (a classifier layer that sits alongside hooks and `permissions.allow/ask/deny`) hasn't been empirically confirmed — a live test attempt was inconclusive because `.claude/settings.local.json` created mid-session isn't picked up by the settings watcher until `/hooks` is opened or the session restarts, so the test hook may simply never have loaded. The `deny` path doesn't depend on this and is unaffected either way. If you rely on the `ask` path, confirm it actually prompts you in your own setup before trusting it.
 
 ## Installation
 
