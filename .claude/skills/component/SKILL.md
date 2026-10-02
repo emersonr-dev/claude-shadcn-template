@@ -15,7 +15,7 @@ This file points at the canonical rules rather than copying them — read the so
 - `.claude/commands/cui.md`, `rui.md`, `iui.md`, `ftc.md` — one Claude Code command per shadcn/studio MCP workflow. Each calls the matching `mcp__shadcn-studio-mcp__get-*-instructions` tool live (rather than a copy baked into this file) and then applies the conventions below. If the user's request matches one of these workflows but they didn't type the slash command, invoke the same `get-*-instructions` tool directly instead of guessing at steps.
 - `.claude/skills/component/references/shadcn-studio-workflow.md` — why the workflows are structured as "collect everything, then install in one batch," the existing-component-vs-fetched-candidate comparison gate, and which command maps to which MCP instructions tool.
 - `.claude/skills/component/references/figma-to-shadcn-mapping.md` — Figma element → shadcn/ui component mapping table, used by `/ftc` when converting raw Figma markup.
-- `CLAUDE.md` § "Component conventions" — the enforced conventions (named exports or whatever this project chose, `Props` type, `data-slot`, `cn()`, path aliases, no hardcoded colors, placement rules). Apply these to every component this skill produces; don't restate them here, they change independently of this skill.
+- `.claude/claude-shadcn.md` § "Component conventions" — the enforced conventions (named exports or whatever this project chose, `Props` type, `data-slot`, `cn()`, path aliases, no hardcoded colors, placement rules). Apply these to every component this skill produces; don't restate them here, they change independently of this skill.
 
 ## Which workflow to use
 
@@ -158,5 +158,5 @@ export type { MyComponentProps }
 
 - [ ] MCP workflow ran to completion (no steps skipped, no premature installs) — or the plain `npx shadcn@latest add` path was used instead, when appropriate
 - [ ] Component hierarchy followed (existing → install → extend → never pure Tailwind — see `references/figma-to-shadcn-mapping.md` for the Figma-conversion case)
-- [ ] Conventions from `CLAUDE.md` § "Component conventions" applied (exports, `Props` type, `data-slot`, `cn()`, path aliases, no hardcoded colors, placement)
+- [ ] Conventions from `.claude/claude-shadcn.md` § "Component conventions" applied (exports, `Props` type, `data-slot`, `cn()`, path aliases, no hardcoded colors, placement)
 - [ ] Re-checked against current `CLAUDE.md` / `references/*` before relying on this file — it's a pointer, not a guaranteed-current copy
