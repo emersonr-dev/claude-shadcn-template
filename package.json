@@ -19,7 +19,8 @@
     ".claude/skills"
   ],
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "test:smoke": "bash test/smoke.sh"
   },
   "engines": {
     "node": ">=20.12"

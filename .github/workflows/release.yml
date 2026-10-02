@@ -1,0 +1,40 @@
+name: Release
+
+# Push a tag matching package.json's version (e.g. `git tag v0.1.0 && git push origin v0.1.0`)
+# to attach the packed tarball to a GitHub Release. Nothing is published to the npm registry.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - name: Check tag matches package.json version
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          [ "v$VERSION" = "$GITHUB_REF_NAME" ] || { echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $VERSION"; exit 1; }
+      - run: npm ci
+      - run: npm test
+      - run: npm run test:smoke
+      - name: Pack
+        run: echo "TARBALL=$(npm pack --silent)" >> "$GITHUB_ENV"
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" "$TARBALL" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes \
+            --notes "Install: \`npm i -D https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/${TARBALL}\` then \`npx claude-shadcn-cli init\`."

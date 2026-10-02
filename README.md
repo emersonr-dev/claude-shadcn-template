@@ -1,5 +1,7 @@
 # claude-shadcn-template
 
+[![CI](https://github.com/emersonr-dev/claude-shadcn-template/actions/workflows/ci.yml/badge.svg)](https://github.com/emersonr-dev/claude-shadcn-template/actions/workflows/ci.yml)
+
 A reusable Claude Code setup for React-based projects built on shadcn/ui. It packages four slash commands that drive the [Shadcn Studio](https://shadcnstudio.com) MCP server through a consistent, hierarchy-respecting workflow, a `component` skill that ties them together, and a `CLAUDE.md` skeleton to start a new project's Claude Code configuration from — so every new repo doesn't reinvent the same rules about when to reuse a component, when to install one, and when to skip the paid workflow entirely.
 
 It works with any React framework shadcn/ui supports — Next.js (App Router or Pages Router), Vite, Remix, TanStack Start, Astro's React islands, or plain React with manual setup.
@@ -45,6 +47,8 @@ bin/cli.js, src/                                       # claude-shadcn-cli — i
 `claude-shadcn-cli` is a local-only package (`"private": true`, not on the npm registry). Install it as a dev dependency from a tarball, a local path, or this git repo:
 
 ```bash
+# from a GitHub Release (tarball attached by the Release workflow)
+npm i -D https://github.com/emersonr-dev/claude-shadcn-template/releases/download/v0.1.0/claude-shadcn-cli-0.1.0.tgz
 # from a tarball (run `npm pack` in this repo first)
 npm i -D /path/to/claude-shadcn-cli-0.1.0.tgz
 # or straight from a local checkout / the git repo
@@ -69,6 +73,11 @@ Nothing runs on install. `init` is an explicit command that asks a few questions
 Re-running is safe. `.claude/.claude-shadcn-manifest.json` records what was installed, so files you never touched are updated to the newer template and files you edited become conflicts.
 
 Flags: `--dry-run`, `--yes` (accepts the defaults; no AI step), `--studio` / `--no-studio`, `--no-ai`, `--cwd <dir>`. Run `npx claude-shadcn-cli --help` for details.
+
+### CI and releases
+
+- **CI** (`.github/workflows/ci.yml`) runs on every PR and every push to `main`, on Ubuntu and macOS with Node 20, 22 and 24. It runs `npm test` (unit tests) and `npm run test:smoke`. The smoke test packs the tarball, installs it into a throwaway app, runs `init` twice and checks the hook's decisions. A separate job runs ShellCheck on the shell scripts.
+- **Release** (`.github/workflows/release.yml`): bump `version` in `package.json`, merge, then `git tag v<version> && git push origin v<version>`. The workflow checks that the tag matches the version, runs the tests, and attaches the packed `.tgz` to a GitHub Release. Nothing is published to the npm registry.
 
 ### Manual installation
 
