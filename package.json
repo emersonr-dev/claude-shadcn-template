@@ -25,7 +25,7 @@
   "engines": {
     "node": ">=20.12"
   },
-  "license": "UNLICENSED",
+  "license": "MIT",
   "dependencies": {
     "@clack/prompts": "^1.8.1"
   }
