@@ -1,4 +1,4 @@
-<!-- Managed by claude-shadcn-cli and imported from CLAUDE.md via `@.claude/claude-shadcn.md`. Re-running `npx claude-shadcn-cli init` refreshes this file; put project-specific overrides in CLAUDE.md instead of editing here. Copying this file by hand instead? Fill in or delete each `[CUSTOMIZE]` marker and keep only the `<!-- region -->` blocks that apply. -->
+<!-- Managed by claude-shadcn-cli and imported from CLAUDE.md via `@.claude/claude-shadcn.md`. Re-running `npx claude-shadcn-cli init` refreshes this file; put project-specific overrides in CLAUDE.md instead of editing here. Copying this file by hand instead? Fill in or delete each `[CUSTOMIZE]` marker and keep only the `name:start`/`name:end` region blocks that apply. -->
 
 # shadcn/ui conventions
 

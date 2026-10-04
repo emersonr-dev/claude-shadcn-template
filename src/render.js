@@ -17,7 +17,7 @@ function replaceExact(text, from, to) {
 const tidy = (text) => text.replace(/\n{3,}/g, "\n\n")
 
 export const MANUAL_HINT =
-  " Copying this file by hand instead? Fill in or delete each `[CUSTOMIZE]` marker and keep only the `<!-- region -->` blocks that apply."
+  " Copying this file by hand instead? Fill in or delete each `[CUSTOMIZE]` marker and keep only the `name:start`/`name:end` region blocks that apply."
 export const EXPORT_MARKER =
   "`[CUSTOMIZE]` Named exports only (no `export default`) for new `components/ui/*` and `components/providers/*` components — or pick a different export convention and state it here; whatever is chosen, keep it consistent project-wide and call out any exceptions (e.g. page/route files following a framework's own convention)."
 export const RSC_MARKER = "`[CUSTOMIZE — RSC frameworks only]` "

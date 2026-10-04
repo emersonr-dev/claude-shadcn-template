@@ -58,6 +58,11 @@ test("render: every marker the CLI replaces exists in the template", () => {
   for (const marker of [MANUAL_HINT, EXPORT_MARKER, RSC_MARKER, CSS_MARKER]) assert.ok(source.includes(marker), marker)
 })
 
+test("render: the managed file's HTML comments never nest (a nested --> leaks text into Claude's context)", () => {
+  const source = readFileSync(join(PKG_ROOT, ".claude/claude-shadcn.md"), "utf8")
+  for (const comment of source.match(/<!--[\s\S]*?-->/g)) assert.ok(!comment.slice(4).includes("<!--"), comment)
+})
+
 test("render: managed file resolves markers and regions", () => {
   const source = readFileSync(join(PKG_ROOT, ".claude/claude-shadcn.md"), "utf8")
   const studioRsc = renderManagedMd(source, { studio: true, rsc: true, cssFile: "app/globals.css" })

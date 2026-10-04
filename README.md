@@ -44,19 +44,32 @@ bin/cli.js, src/                                       # claude-shadcn-cli — i
 
 ### With the CLI (recommended)
 
-`claude-shadcn-cli` is a local-only package (`"private": true`, not on the npm registry). Install it as a dev dependency from a tarball, a local path, or this git repo:
+`claude-shadcn-cli` isn't on the npm registry (`"private": true`). npm installs it straight from this GitHub repo instead, with no tarball or token needed:
 
 ```bash
-# from a GitHub Release (tarball attached by the Release workflow)
-npm i -D https://github.com/emersonr-dev/claude-shadcn-template/releases/download/v0.1.0/claude-shadcn-cli-0.1.0.tgz
-# from a tarball (run `npm pack` in this repo first)
-npm i -D /path/to/claude-shadcn-cli-0.1.0.tgz
-# or straight from a local checkout / the git repo
-npm i -D file:../claude-shadcn-template
-npm i -D github:emersonr-dev/claude-shadcn-template
-
+# as a devDependency, pinned to a release range like a registry package
+npm i -D "github:emersonr-dev/claude-shadcn-template#semver:^0.1.0"
 npx claude-shadcn-cli init
+
+# or a one-off run without adding anything to package.json
+npx github:emersonr-dev/claude-shadcn-template init
 ```
+
+`#semver:^0.1.0` makes npm pick the newest `v*` release tag in that range. To move to a newer release, run the same `npm i -D` command again (`npm update` doesn't re-resolve git dependencies). Leave out `#semver:…` to track the latest commit on `main`.
+
+<details>
+<summary>Other ways to install (release tarball, local checkout)</summary>
+
+```bash
+# the .tgz attached to a GitHub Release
+npm i -D https://github.com/emersonr-dev/claude-shadcn-template/releases/download/v0.1.0/claude-shadcn-cli-0.1.0.tgz
+# a local checkout, e.g. while working on the CLI itself
+npm i -D file:../claude-shadcn-template
+# a tarball you built yourself with `npm pack`
+npm i -D /path/to/claude-shadcn-cli-0.1.0.tgz
+```
+
+</details>
 
 Nothing runs on install. `init` is an explicit command that asks a few questions and always shows a plan before writing anything:
 
@@ -77,7 +90,7 @@ Flags: `--dry-run`, `--yes` (accepts the defaults; no AI step), `--studio` / `--
 ### CI and releases
 
 - **CI** (`.github/workflows/ci.yml`) runs on every PR and every push to `main`, on Ubuntu and macOS with Node 20, 22 and 24. It runs `npm test` (unit tests) and `npm run test:smoke`. The smoke test packs the tarball, installs it into a throwaway app, runs `init` twice and checks the hook's decisions. A separate job runs ShellCheck on the shell scripts.
-- **Release** (`.github/workflows/release.yml`): bump `version` in `package.json`, merge, then `git tag v<version> && git push origin v<version>`. The workflow checks that the tag matches the version, runs the tests, and attaches the packed `.tgz` to a GitHub Release. Nothing is published to the npm registry.
+- **Release** (`.github/workflows/release.yml`): bump `version` in `package.json`, merge, then `git tag v<version> && git push origin v<version>`. The workflow checks that the tag matches the version, runs the tests, and creates a GitHub Release with the packed `.tgz` attached. The pushed tag is what `#semver:` installs resolve to. Nothing is published to the npm registry.
 
 ### Manual installation
 

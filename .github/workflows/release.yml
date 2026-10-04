@@ -37,4 +37,14 @@ jobs:
           gh release create "$GITHUB_REF_NAME" "$TARBALL" \
             --title "$GITHUB_REF_NAME" \
             --generate-notes \
-            --notes "Install: \`npm i -D https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/${TARBALL}\` then \`npx claude-shadcn-cli init\`."
+            --notes "$(cat <<NOTES
+          ## Install
+
+          \`\`\`bash
+          npm i -D "github:${GITHUB_REPOSITORY}#semver:^${GITHUB_REF_NAME#v}"
+          npx claude-shadcn-cli init
+          \`\`\`
+
+          Or install the attached tarball: \`npm i -D https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/${TARBALL}\`
+          NOTES
+          )"
