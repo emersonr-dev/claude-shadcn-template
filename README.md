@@ -231,3 +231,11 @@ Notes on the hook:
 - `ask` shows you a confirmation prompt even in Auto Mode; answering No blocks the call.
 - Hook output must be valid JSON. If it isn't, Claude Code ignores the hook, so the script builds its output with `jq`.
 - After editing hook settings mid-session, open `/hooks` or restart Claude Code so they load.
+
+## License
+
+[MIT](LICENSE) — use it, fork it, copy any of it into your own projects.
+
+As an additional grant on top of that license: the files `claude-shadcn-cli init` writes into your project — `CLAUDE.md`, `.claude/claude-shadcn.md`, `.claude/settings.json`, and everything under `.claude/commands`, `.claude/hooks`, and `.claude/skills` — are yours to keep, edit, and redistribute with **no attribution requirement**. They're meant to be customized until they no longer resemble this template, so you don't need to carry a copyright notice into your own repo. The attribution clause still applies if you redistribute the CLI itself (`bin/`, `src/`).
+
+Not affiliated with or endorsed by shadcn, Vercel, or ThemeSelection. "shadcn/ui" and "Shadcn Studio" are their respective owners' names, used here only to say what this template works with. shadcn/ui is MIT-licensed; Shadcn Studio is a separate paid product under its own terms — this repo ships no code from either, only configuration and instructions that point at them.
