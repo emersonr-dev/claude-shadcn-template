@@ -1,6 +1,6 @@
 # Figma → shadcn/ui conversion mapping
 
-Reference for the `/ftc` (Figma-to-Code) workflow (see `.claude/commands/ftc.md` and the `component` skill). The component-hierarchy rule itself (existing `components/ui/*` → install → extend → never raw Tailwind) lives in `CLAUDE.md` § "Component conventions" — this file only adds what that rule doesn't cover: how to map Figma's raw output onto shadcn/ui components.
+Reference for the `/ftc` (Figma-to-Code) workflow (see `.claude/commands/ftc.md` and the `component` skill). The component-hierarchy rule itself (existing `components/ui/*` → install → extend → never raw Tailwind) lives in `.claude/claude-shadcn.md` § "Component conventions" — this file only adds what that rule doesn't cover: how to map Figma's raw output onto shadcn/ui components.
 
 ## Why this file exists
 
@@ -43,4 +43,4 @@ Conversion process: identify what each element represents (card, button, badge, 
 | Searchable list | `Command` |
 | Site/page navigation | `NavigationMenu` |
 
-If nothing in `components/ui/` fits, install the missing shadcn/ui component (`npx shadcn@latest add <name>`) before writing custom markup — see the component hierarchy rule in `CLAUDE.md`.
+If nothing in `components/ui/` fits, install the missing shadcn/ui component (`npx shadcn@latest add <name>`) before writing custom markup — see the component hierarchy rule in `.claude/claude-shadcn.md`.

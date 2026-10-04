@@ -1,0 +1,32 @@
+{
+  "name": "claude-shadcn-cli",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Installs a Claude Code setup (commands, hooks, skills, CLAUDE.md conventions) for React + shadcn/ui projects.",
+  "type": "module",
+  "bin": {
+    "claude-shadcn-cli": "bin/cli.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "CLAUDE.md",
+    "components.registries.snippet.json",
+    ".claude/claude-shadcn.md",
+    ".claude/settings.json",
+    ".claude/commands",
+    ".claude/hooks",
+    ".claude/skills"
+  ],
+  "scripts": {
+    "test": "node --test",
+    "test:smoke": "bash test/smoke.sh"
+  },
+  "engines": {
+    "node": ">=20.12"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@clack/prompts": "^1.8.1"
+  }
+}

@@ -19,7 +19,7 @@ Within one of these workflows, run the fetched steps through to completion rathe
 
 ## Project conventions on top
 
-The MCP output is generic — always apply this project's own conventions afterward (named exports or whatever this project chose for new `components/ui/*`/`components/providers/*`, `Props` type, `data-slot`, `cn()`, path aliases, no hardcoded colors, component hierarchy). These live in `CLAUDE.md` § "Component conventions" and the `component` skill, not here — this file only covers the MCP tool sequencing.
+The MCP output is generic — always apply this project's own conventions afterward (named exports or whatever this project chose for new `components/ui/*`/`components/providers/*`, `Props` type, `data-slot`, `cn()`, path aliases, no hardcoded colors, component hierarchy). These live in `.claude/claude-shadcn.md` § "Component conventions" and the `component` skill, not here — this file only covers the MCP tool sequencing.
 
 ## Existing component vs. fetched Studio candidate — comparison gate
 
