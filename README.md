@@ -91,7 +91,7 @@ Flags: `--dry-run`, `--yes` (accepts the defaults; no AI step), `--studio` / `--
 
 ### CI and releases
 
-- **CI** (`.github/workflows/ci.yml`) runs on every PR and every push to `main`, on Ubuntu and macOS with Node 20, 22 and 24. It runs `npm test` (unit tests) and `npm run test:smoke`. The smoke test packs the tarball, installs it into a throwaway app, runs `init` twice and checks the hook's decisions. A separate job runs ShellCheck on the shell scripts.
+- **CI** (`.github/workflows/ci.yml`) runs on every PR and every push to `main`, on Ubuntu with Node 20, 22 and 24. A macOS job (Node 24) runs only after merging to `main`, or manually from the Actions tab, so PRs never wait on GitHub's often-busy macOS runners. Each job runs `npm test` (unit tests) and `npm run test:smoke`. The smoke test packs the tarball, installs it into a throwaway app, runs `init` (including a Figma-only setup) and checks the hook's decisions. A separate job runs ShellCheck on the shell scripts.
 - **Release** (`.github/workflows/release.yml`): bump `version` in `package.json`, merge, then `git tag v<version> && git push origin v<version>`. The workflow checks that the tag matches the version, runs the tests, and creates a GitHub Release with the packed `.tgz` attached. The pushed tag is what `#semver:` installs resolve to. Nothing is published to the npm registry.
 
 ### Manual installation
