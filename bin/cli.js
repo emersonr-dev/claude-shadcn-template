@@ -13,7 +13,9 @@ Options:
   --dry-run       Show what would change, write nothing
   --yes, -y       Accept defaults without asking (no AI steps)
   --studio        You have a Shadcn Studio license
-  --no-studio     You don't (skips /cui /rui /iui /ftc and the hook)
+  --no-studio     You don't (skips /cui /rui /iui, the hook and the registries)
+  --figma         Install /ftc and Figma's remote MCP server
+  --no-figma      Skip the Figma setup
   --no-ai         Never offer to run Claude Code
   --cwd <dir>     Project root (default: current directory)
   --help, -h      Show this help
@@ -26,6 +28,8 @@ const { values, positionals } = parseArgs({
     yes: { type: "boolean", short: "y" },
     studio: { type: "boolean" },
     "no-studio": { type: "boolean" },
+    figma: { type: "boolean" },
+    "no-figma": { type: "boolean" },
     "no-ai": { type: "boolean" },
     cwd: { type: "string" },
     help: { type: "boolean", short: "h" },
@@ -38,14 +42,15 @@ if (values.version) {
 } else if (values.help || positionals[0] !== "init") {
   console.log(HELP)
   process.exitCode = values.help ? 0 : 1
-} else if (values.studio && values["no-studio"]) {
-  console.error("Pass either --studio or --no-studio, not both.")
+} else if ((values.studio && values["no-studio"]) || (values.figma && values["no-figma"])) {
+  console.error("Pass either --studio or --no-studio (and --figma or --no-figma), not both.")
   process.exitCode = 1
 } else {
   process.exitCode = await init(resolve(values.cwd ?? process.cwd()), {
     dryRun: values["dry-run"],
     yes: values.yes,
     studio: values.studio ? true : values["no-studio"] ? false : undefined,
+    figma: values.figma ? true : values["no-figma"] ? false : undefined,
     noAi: values["no-ai"],
   })
 }

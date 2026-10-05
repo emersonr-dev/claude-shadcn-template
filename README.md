@@ -12,8 +12,8 @@ Before using this template in a project:
 
 - **A React project already scaffolded, with `npx shadcn@latest init` already run against it** — this template never ships a static `components.json` to copy over yours, since `init` is what correctly detects this project's actual framework, Tailwind version, and path aliases. See [Installation](#installation) for what to merge in afterward.
 - **[Claude Code](https://claude.com/claude-code)** installed and running against the target repo.
-- **The `shadcn-studio-mcp` MCP server configured and connected**, if you intend to use `/cui`, `/rui`, `/iui`, or `/ftc`. This is a *separate, paid* product ([Shadcn Studio](https://shadcnstudio.com) by ThemeSelection) layered on top of the free shadcn/ui registry — it needs its own `EMAIL`/`LICENSE_KEY` credentials wired into `components.json`. Each command checks for this connection before doing anything and tells you what's missing if it isn't there.
-- **A Figma MCP server**, additionally, only if you intend to use `/ftc` (Figma-to-code). Not included in this template — configure one separately (e.g. `claude mcp add`).
+- **The `shadcn-studio-mcp` MCP server configured and connected**, if you intend to use `/cui`, `/rui` or `/iui` (and for `/ftc` to install Studio blocks). This is a *separate, paid* product ([Shadcn Studio](https://shadcnstudio.com) by ThemeSelection) layered on top of the free shadcn/ui registry — it needs its own `EMAIL`/`LICENSE_KEY` credentials wired into `components.json`. Each command checks for this connection before doing anything and tells you what's missing if it isn't there.
+- **Figma's MCP server**, only if you intend to use `/ftc` (Figma-to-code). The CLI adds Figma's remote server (`https://mcp.figma.com/mcp`) to the project's `.mcp.json`; you sign in once with `/mcp` → figma → Authenticate. `/ftc` works without a Shadcn Studio license too: it then maps the design onto stock shadcn/ui components.
 - **No Shadcn Studio license?** You can still use this template — answer "No" to the CLI's license question, or see step 5 under [Manual installation](#manual-installation) for what to remove, and rely on the official `npx shadcn@latest add` CLI directly instead of the four commands.
 
 ## What's included
@@ -48,25 +48,25 @@ bin/cli.js, src/                                       # claude-shadcn-cli — i
 
 ```bash
 # as a devDependency, pinned to a release range like a registry package
-npm i -D "github:emersonr-dev/claude-shadcn-template#semver:^0.1.0"
+npm i -D "github:emersonr-dev/claude-shadcn-template#semver:^0.2.0"
 npx claude-shadcn-cli init
 
 # or a one-off run without adding anything to package.json
 npx github:emersonr-dev/claude-shadcn-template init
 ```
 
-`#semver:^0.1.0` makes npm pick the newest `v*` release tag in that range. To move to a newer release, run the same `npm i -D` command again (`npm update` doesn't re-resolve git dependencies). Leave out `#semver:…` to track the latest commit on `main`.
+`#semver:^0.2.0` makes npm pick the newest `v*` release tag in that range. To move to a newer release, run the same `npm i -D` command again (`npm update` doesn't re-resolve git dependencies). Leave out `#semver:…` to track the latest commit on `main`.
 
 <details>
 <summary>Other ways to install (release tarball, local checkout)</summary>
 
 ```bash
 # the .tgz attached to a GitHub Release
-npm i -D https://github.com/emersonr-dev/claude-shadcn-template/releases/download/v0.1.0/claude-shadcn-cli-0.1.0.tgz
+npm i -D https://github.com/emersonr-dev/claude-shadcn-template/releases/download/v0.2.0/claude-shadcn-cli-0.2.0.tgz
 # a local checkout, e.g. while working on the CLI itself
 npm i -D file:../claude-shadcn-template
 # a tarball you built yourself with `npm pack`
-npm i -D /path/to/claude-shadcn-cli-0.1.0.tgz
+npm i -D /path/to/claude-shadcn-cli-0.2.0.tgz
 ```
 
 </details>
@@ -74,18 +74,20 @@ npm i -D /path/to/claude-shadcn-cli-0.1.0.tgz
 Nothing runs on install. `init` is an explicit command that asks a few questions and always shows a plan before writing anything:
 
 1. **Checks the stack.** It stops with no `package.json` or no `react` dependency. With React but no `components.json`, it offers to run `npx shadcn@latest init` first. It reads the framework, package manager, `rsc` and global CSS path from the project.
-2. **Asks whether you have a Shadcn Studio license.** Without one it skips `/cui`, `/rui`, `/iui`, `/ftc`, the hook, and the `@ss-*` registries.
-3. **Shows the plan**: `+` new, `↑` update, `~` merge into existing, `!` conflict, `=` up to date. Then it asks before applying.
-4. **Installs without overwriting your work:**
+2. **Asks whether you have a Shadcn Studio license.** Without one it skips `/cui`, `/rui`, `/iui`, the hook, and the `@ss-*` registries.
+3. **Asks whether you build UI from Figma designs.** If yes, it installs `/ftc` and the Figma mapping reference, adds Figma's remote MCP server to `.mcp.json`, and allows Figma's read-only tools (`get_metadata`, `get_design_context`, `get_variable_defs`, `get_screenshot`) without a prompt. Figma's write tools still ask.
+4. **Shows the plan**: `+` new, `↑` update, `~` merge into existing, `!` conflict, `=` up to date. Then it asks before applying.
+5. **Installs without overwriting your work:**
    - Commands, hooks and skills are copied. A file you already have that differs from the template is a **conflict**: yours is kept, and the template's copy goes to `.claude-shadcn-incoming/` with a `MERGE.md` checklist and a ready-made prompt for your AI agent.
    - `CLAUDE.md`: if you have one, it only gains a `@.claude/claude-shadcn.md` import line. If you don't, the skeleton is created.
    - `.claude/settings.json` is merged: permission rules are combined, and only this tool's own hook entries are added or replaced. `npm run` rules are rewritten for your package manager and dropped for scripts you don't have.
+   - `.mcp.json` gains only the servers you don't already have, whether in the project or in your own Claude Code config (user or local scope). Existing entries are never edited. If you have a Studio license but no `shadcn-studio-mcp` server yet, it's added with `${SHADCN_STUDIO_API_KEY}`/`${SHADCN_STUDIO_EMAIL}` references, so no secret is committed. Export those two variables in your shell profile, because Claude Code reads them from the environment, not from `.env`. The first time Claude Code opens the project, it asks you to approve the servers in `.mcp.json`.
    - With a Studio license, the registries are added to `components.json` (existing entries are never changed) and `EMAIL=`/`LICENSE_KEY=` placeholders go into `.env.example`. `.gitignore` gains `.env` and `.claude/settings.local.json`.
-5. **Offers Claude Code**, if `claude` is on your PATH, to fill the new `CLAUDE.md`'s `[CUSTOMIZE]` sections and/or merge conflicts. This uses tokens. It runs headless (`claude -p`) with read tools plus `Edit` on only the files involved.
+6. **Offers Claude Code**, if `claude` is on your PATH, to fill the new `CLAUDE.md`'s `[CUSTOMIZE]` sections and/or merge conflicts. This uses tokens. It runs headless (`claude -p`) with read tools plus `Edit` on only the files involved.
 
 Re-running is safe. `.claude/.claude-shadcn-manifest.json` records what was installed, so files you never touched are updated to the newer template and files you edited become conflicts.
 
-Flags: `--dry-run`, `--yes` (accepts the defaults; no AI step), `--studio` / `--no-studio`, `--no-ai`, `--cwd <dir>`. Run `npx claude-shadcn-cli --help` for details.
+Flags: `--dry-run`, `--yes` (accepts the defaults; no AI step), `--studio` / `--no-studio`, `--figma` / `--no-figma`, `--no-ai`, `--cwd <dir>`. Run `npx claude-shadcn-cli --help` for details.
 
 ### CI and releases
 
@@ -98,9 +100,10 @@ Flags: `--dry-run`, `--yes` (accepts the defaults; no AI step), `--studio` / `--
 2. If `components.json` doesn't exist yet in the target repo, run `npx shadcn@latest init` **first** and answer its prompts — it detects this project's actual framework, Tailwind version, and path aliases far more reliably than any static file this template could ship. Never copy a pre-made `components.json` over one `init` would generate; the two can drift (e.g. a stale `tailwind.config.ts` path on a project that's actually on Tailwind v4's CSS-based config, which has none).
 3. Merge `components.registries.snippet.json`'s `registries` block into the `components.json` that `init` produced (it's the one thing `init` never adds on its own — Shadcn Studio's registries are a separate paid product layered on top of the official shadcn/ui registry). Set `EMAIL` and `LICENSE_KEY` in `.env` (gitignored) to your Shadcn Studio credentials, matching what that block expects.
 4. Fill in every `[CUSTOMIZE]` block in `CLAUDE.md` and `.claude/claude-shadcn.md`: env vars beyond the Studio credentials, this project's actual architecture/framework, its component export convention, where its color tokens live, its component placement rules if they differ from the defaults, and (if applicable) a domain-specific "extension contract" skill for whatever this project's own recurring "add a new X" task is.
-5. **No Shadcn Studio license?** Delete `.claude/commands/{cui,rui,iui,ftc}.md`, delete the Studio-specific sections of `.claude/skills/component/SKILL.md` and its `references/` directory, drop the `@ss-*` registries from `components.json`, and rely on `npx shadcn@latest add` directly. `CLAUDE.md` already calls this branch out inline.
-6. Adjust `.claude/settings.json`'s bash allowlist to this project's actual package manager and scripts — it assumes `npm run build`/`npm run lint`; swap in `pnpm`/`yarn`/`bun` equivalents as needed.
-7. Run `/init` in Claude Code afterward so it fills in what it can infer from the actual codebase, then review its output against what you wrote by hand in step 4.
+5. **No Shadcn Studio license?** Delete `.claude/commands/{cui,rui,iui}.md` (keep `ftc.md` if you use Figma: it falls back to stock shadcn/ui), delete the Studio-specific sections of `.claude/skills/component/SKILL.md` and its `references/` directory, drop the `@ss-*` registries from `components.json`, and rely on `npx shadcn@latest add` directly. `CLAUDE.md` already calls this branch out inline.
+6. **Using Figma?** Run `claude mcp add --scope project --transport http figma https://mcp.figma.com/mcp`, then `/mcp` → figma → Authenticate. Not using it? Delete `.claude/commands/ftc.md`, the `figma` region in `.claude/claude-shadcn.md`, and the `mcp__figma__*` rules in `.claude/settings.json`.
+7. Adjust `.claude/settings.json`'s bash allowlist to this project's actual package manager and scripts — it assumes `npm run build`/`npm run lint`; swap in `pnpm`/`yarn`/`bun` equivalents as needed.
+8. Run `/init` in Claude Code afterward so it fills in what it can infer from the actual codebase, then review its output against what you wrote by hand in step 4.
 
 ## Filling in `[CUSTOMIZE]`
 
@@ -180,7 +183,7 @@ Once installed, four slash commands are available in Claude Code:
 | `/cui <description>` | Building a new block or page section | Fetches matching Shadcn Studio blocks, compares them against what already exists in the project, and installs only if nothing already covers the request. |
 | `/rui <change>` | Editing or updating an existing component/block | Checks first whether the fix is really just "update a stock component" (→ plain CLI) or genuinely needs a newer/Pro Studio variant, then refines accordingly. |
 | `/iui <description>` | Wanting design inspiration without installing anything | Browses Studio's blocks for patterns and synthesizes a new design from them — never installs. |
-| `/ftc <Figma frame/URL>` | Converting a Figma design to code | Extracts the design via a Figma MCP server, converts it through Studio's block system, and maps raw output onto shadcn/ui components. |
+| `/ftc <Figma URL with node-id>` | Converting a Figma design to code | Reads the frame through Figma's MCP server. With a Studio license it installs the matching Pro/Free blocks; without one it maps the design onto stock shadcn/ui components. Either way, it saves images into the project, maps colors to your CSS tokens, and checks the result against a screenshot of the frame. |
 
 Each command opens with a prerequisite check: if `shadcn-studio-mcp` (or, for `/ftc`, the Figma MCP server) isn't connected, it stops immediately and tells you what to configure, rather than failing partway through with a confusing error. You never need to invoke the underlying MCP tools directly — typing the slash command is enough.
 
@@ -193,7 +196,7 @@ shadcn/ui itself supports multiple React frameworks, and so does everything in t
 | Concern | Next.js App Router (or other RSC framework) | Vite / CRA / Pages Router / non-RSC |
 |---|---|---|
 | `"use client"` directive | keep — required wherever a component uses hooks/events/browser APIs | delete entirely — this directive doesn't exist outside RSC |
-| Image/asset allowlisting (`/ftc` only) | check `next.config`'s remote image domains | skip — most non-Next setups have no such allowlist |
+| Images (`/ftc` only) | saved under `public/`, so no `next.config` image-domain changes are needed | same: saved into the project's static folder |
 | Page/route file (`/ftc` only) | `page.tsx` | this project's equivalent route/page component |
 
 If a future React framework isn't Next.js or a plain Vite-style SPA, its own `shadcn@latest init` support handles the framework-specific `components.json` detection — nothing in this template needs to change, since the commands and skill don't reference a framework by name anywhere except the table above.

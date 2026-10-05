@@ -1,14 +1,16 @@
 import { isDeepStrictEqual } from "node:util"
 
 const STUDIO_PERMISSION = /^mcp__shadcn-studio-mcp__/
+const FIGMA_PERMISSION = /^mcp__figma__/
 const RUN_SCRIPT = /^Bash\(npm run ([\w:-]+)\)$/
 const HOOK_SCRIPT = "check-shadcn-studio.sh"
 
-/** Adapts the template's settings.json to the project (license, package manager, scripts). */
-export function renderSettings(source, { studio, packageManager, scripts }) {
+/** Adapts the template's settings.json to the project (license, Figma, package manager, scripts). */
+export function renderSettings(source, { studio, figma, packageManager, scripts }) {
   const settings = structuredClone(source)
   settings.permissions.allow = settings.permissions.allow.flatMap((rule) => {
     if (!studio && STUDIO_PERMISSION.test(rule)) return []
+    if (!figma && FIGMA_PERMISSION.test(rule)) return []
     const run = rule.match(RUN_SCRIPT)
     if (!run) return [rule]
     return scripts[run[1]] ? [`Bash(${packageManager} run ${run[1]})`] : []

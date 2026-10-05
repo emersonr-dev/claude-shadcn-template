@@ -42,6 +42,6 @@ export function applyPlan(cwd, plan) {
     if (action.owned && action.kind !== "conflict") manifest.files[action.path] = sha256(action.content)
   }
   const { version } = readJson(join(PKG_ROOT, "package.json"))
-  write(cwd, MANIFEST, toJson({ version, studio: plan.studio, files: manifest.files }))
+  write(cwd, MANIFEST, toJson({ version, studio: plan.studio, figma: plan.figma, files: manifest.files }))
   return conflicts
 }
