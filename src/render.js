@@ -6,7 +6,7 @@
 const REGION = /^<!-- ([\w-]+):start -->\n([\s\S]*?)^<!-- \1:end -->\n/gm
 
 function applyRegions(text, keep) {
-  return text.replace(REGION, (_, name, body) => (keep[name] ? body : ""))
+  return text.replace(REGION, (_, name, body) => (keep[name] ? applyRegions(body, keep) : ""))
 }
 
 function replaceExact(text, from, to) {
@@ -24,8 +24,8 @@ export const RSC_MARKER = "`[CUSTOMIZE — RSC frameworks only]` "
 export const CSS_MARKER = "`[CUSTOMIZE: e.g. app/globals.css for Next.js App Router, src/index.css for Vite]`"
 
 /** Renders `.claude/claude-shadcn.md` for a project. */
-export function renderManagedMd(source, { studio, rsc, cssFile }) {
-  let text = applyRegions(source, { studio, "no-studio": !studio, rsc })
+export function renderManagedMd(source, { studio, figma, rsc, cssFile }) {
+  let text = applyRegions(source, { studio, "no-studio": !studio, figma, rsc })
   text = replaceExact(text, MANUAL_HINT, "")
   text = replaceExact(
     text,

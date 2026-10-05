@@ -4,7 +4,11 @@
       "mcp__shadcn-studio-mcp__*",
       "Bash(npx shadcn@latest add:*)",
       "Bash(npm run build)",
-      "Bash(npm run lint)"
+      "Bash(npm run lint)",
+      "mcp__figma__get_metadata",
+      "mcp__figma__get_design_context",
+      "mcp__figma__get_variable_defs",
+      "mcp__figma__get_screenshot"
     ]
   },
   "hooks": {

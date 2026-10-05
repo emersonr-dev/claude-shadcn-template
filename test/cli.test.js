@@ -8,6 +8,7 @@ import { buildPlan } from "../src/plan.js"
 import { applyPlan } from "../src/apply.js"
 import { renderManagedMd, renderSkeleton, MANUAL_HINT, EXPORT_MARKER, RSC_MARKER, CSS_MARKER } from "../src/render.js"
 import { mergeSettings, renderSettings } from "../src/merge.js"
+import { mergeMcpJson, personalServers, FIGMA_SERVER } from "../src/mcp.js"
 import { PKG_ROOT, INCOMING_DIR, sha256 } from "../src/util.js"
 
 function project(files) {
@@ -28,8 +29,10 @@ const nextApp = () => ({
 
 const read = (dir, path) => readFileSync(join(dir, path), "utf8")
 const kinds = (plan) => Object.fromEntries(plan.actions.map((a) => [a.path, a.kind]))
-const run = (dir, studio) => {
-  const plan = buildPlan(dir, { studio, detection: detectProject(dir) })
+// `personal: {}` keeps tests independent of the MCP servers on the machine running them.
+const planFor = (dir, studio, figma = studio, personal = {}) => buildPlan(dir, { studio, figma, personal, detection: detectProject(dir) })
+const run = (dir, studio, figma = studio, personal = {}) => {
+  const plan = planFor(dir, studio, figma, personal)
   return { plan, conflicts: applyPlan(dir, plan) }
 }
 
@@ -65,15 +68,20 @@ test("render: the managed file's HTML comments never nest (a nested --> leaks te
 
 test("render: managed file resolves markers and regions", () => {
   const source = readFileSync(join(PKG_ROOT, ".claude/claude-shadcn.md"), "utf8")
-  const studioRsc = renderManagedMd(source, { studio: true, rsc: true, cssFile: "app/globals.css" })
+  const studioRsc = renderManagedMd(source, { studio: true, figma: true, rsc: true, cssFile: "app/globals.css" })
   assert.doesNotMatch(studioRsc, /CUSTOMIZE|:start -->|:end -->/)
   assert.match(studioRsc, /"use client"/)
   assert.match(studioRsc, /`\/cui`/)
   assert.match(studioRsc, /`app\/globals\.css`/)
+  assert.match(studioRsc, /## Figma to code/)
 
-  const plain = renderManagedMd(source, { studio: false, rsc: false, cssFile: "src/index.css" })
-  assert.doesNotMatch(plain, /"use client"|\/cui|EMAIL/)
+  const plain = renderManagedMd(source, { studio: false, figma: false, rsc: false, cssFile: "src/index.css" })
+  assert.doesNotMatch(plain, /"use client"|\/cui|\/ftc|EMAIL/)
   assert.match(plain, /no Shadcn Studio license/)
+
+  const figmaOnly = renderManagedMd(source, { studio: false, figma: true, rsc: false, cssFile: "src/index.css" })
+  assert.match(figmaOnly, /`\/ftc/)
+  assert.doesNotMatch(figmaOnly, /\/cui|EMAIL/)
 })
 
 test("render: skeleton drops the template note but keeps the import", () => {
@@ -84,9 +92,11 @@ test("render: skeleton drops the template note but keeps the import", () => {
 
 test("settings: merge is additive, idempotent, and replaces only our hook groups", () => {
   const source = JSON.parse(readFileSync(join(PKG_ROOT, ".claude/settings.json"), "utf8"))
-  const incoming = renderSettings(source, { studio: true, packageManager: "pnpm", scripts: { build: "x" } })
+  const incoming = renderSettings(source, { studio: true, figma: true, packageManager: "pnpm", scripts: { build: "x" } })
   assert.ok(incoming.permissions.allow.includes("Bash(pnpm run build)"))
   assert.ok(!incoming.permissions.allow.some((r) => r.includes("lint")))
+  assert.ok(incoming.permissions.allow.includes("mcp__figma__get_design_context"))
+  assert.ok(!incoming.permissions.allow.some((r) => /^mcp__figma__(use_figma|upload_assets|generate_)/.test(r)), "Figma write tools must still ask")
 
   const theirs = { permissions: { allow: ["Bash(git status)"] }, hooks: { PreToolUse: [{ matcher: "Write", hooks: [{ type: "command", command: "mine.sh" }] }] } }
   const once = mergeSettings(theirs, incoming)
@@ -94,7 +104,8 @@ test("settings: merge is additive, idempotent, and replaces only our hook groups
   assert.ok(once.permissions.allow.includes("Bash(git status)"))
   assert.equal(once.hooks.PreToolUse.length, 1 + incoming.hooks.PreToolUse.length)
 
-  const noStudio = renderSettings(source, { studio: false, packageManager: "npm", scripts: {} })
+  const noStudio = renderSettings(source, { studio: false, figma: false, packageManager: "npm", scripts: {} })
+  assert.ok(!noStudio.permissions.allow.some((r) => r.startsWith("mcp__figma__")))
   assert.equal(noStudio.hooks, undefined)
   assert.ok(!noStudio.permissions.allow.some((r) => r.startsWith("mcp__shadcn-studio")))
 })
@@ -108,14 +119,20 @@ test("plan: fresh project gets everything, second run is a no-op", () => {
   assert.ok(JSON.parse(read(dir, "components.json")).registries["@ss-components"])
   assert.match(read(dir, ".gitignore"), /^\.claude\/settings\.local\.json$/m)
 
-  const second = buildPlan(dir, { studio: true, detection: detectProject(dir) })
+  assert.ok(existsSync(join(dir, ".claude/commands/ftc.md")))
+  assert.deepEqual(JSON.parse(read(dir, ".mcp.json")).mcpServers.figma, FIGMA_SERVER)
+  assert.match(JSON.parse(read(dir, ".mcp.json")).mcpServers["shadcn-studio-mcp"].args.join(" "), /\$\{SHADCN_STUDIO_API_KEY:-\}/)
+
+  const second = planFor(dir, true)
   assert.deepEqual(second.actions.filter((a) => a.kind !== "unchanged"), [])
 })
 
-test("plan: without a license, Studio files are skipped", () => {
+test("plan: without a license or Figma, Studio and Figma files are skipped", () => {
   const dir = project(nextApp())
   run(dir, false)
   assert.ok(!existsSync(join(dir, ".claude/commands")))
+  assert.ok(!existsSync(join(dir, ".mcp.json")))
+  assert.ok(!existsSync(join(dir, ".claude/skills/component/references/figma-to-shadcn-mapping.md")))
   assert.ok(!existsSync(join(dir, ".claude/hooks")))
   assert.ok(existsSync(join(dir, ".claude/skills/component/SKILL.md")))
   assert.equal(JSON.parse(read(dir, "components.json")).registries, undefined)
@@ -150,5 +167,32 @@ test("plan: files we installed and the user never touched are updated in place",
   writeFileSync(join(dir, ".claude/commands/cui.md"), "old template version\n")
   manifest.files[".claude/commands/cui.md"] = sha256("old template version\n")
   writeFileSync(manifestPath, JSON.stringify(manifest))
-  assert.equal(kinds(buildPlan(dir, { studio: true, detection: detectProject(dir) }))[".claude/commands/cui.md"], "update")
+  assert.equal(kinds(planFor(dir, true))[".claude/commands/cui.md"], "update")
+})
+
+test("plan: Figma without a license installs /ftc only, for the fallback path", () => {
+  const dir = project(nextApp())
+  run(dir, false, true)
+  assert.ok(existsSync(join(dir, ".claude/commands/ftc.md")))
+  assert.ok(!existsSync(join(dir, ".claude/commands/cui.md")))
+  assert.ok(!existsSync(join(dir, ".claude/hooks")))
+  assert.deepEqual(Object.keys(JSON.parse(read(dir, ".mcp.json")).mcpServers), ["figma"])
+  assert.ok(JSON.parse(read(dir, ".claude/settings.json")).permissions.allow.includes("mcp__figma__get_metadata"))
+})
+
+test("mcp: never duplicates or edits servers the project or the user already has", () => {
+  const theirs = { mcpServers: { design: { type: "http", url: "https://mcp.figma.com/mcp" }, db: { command: "x" } } }
+  const { result, added } = mergeMcpJson(theirs, { figma: true, studio: true, personal: { "shadcn-studio-mcp": { command: "npx" } } })
+  assert.deepEqual(added, [])
+  assert.deepEqual(result, theirs)
+
+  const dir = project({ ...nextApp(), ".mcp.json": { mcpServers: { db: { command: "x" } } } })
+  run(dir, true, true)
+  assert.deepEqual(Object.keys(JSON.parse(read(dir, ".mcp.json")).mcpServers), ["db", "figma", "shadcn-studio-mcp"])
+})
+
+test("mcp: reads user- and local-scope servers from ~/.claude.json", () => {
+  const dir = project({ "claude.json": { mcpServers: { a: {} }, projects: { "/proj": { mcpServers: { b: {} } } } } })
+  assert.deepEqual(Object.keys(personalServers("/proj", join(dir, "claude.json"))), ["a", "b"])
+  assert.deepEqual(personalServers("/proj", join(dir, "missing.json")), {})
 })

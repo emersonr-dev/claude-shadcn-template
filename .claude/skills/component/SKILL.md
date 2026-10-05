@@ -12,7 +12,7 @@ This file points at the canonical rules rather than copying them — read the so
 
 ## Canonical sources for this skill
 
-- `.claude/commands/cui.md`, `rui.md`, `iui.md`, `ftc.md` — one Claude Code command per shadcn/studio MCP workflow. Each calls the matching `mcp__shadcn-studio-mcp__get-*-instructions` tool live (rather than a copy baked into this file) and then applies the conventions below. If the user's request matches one of these workflows but they didn't type the slash command, invoke the same `get-*-instructions` tool directly instead of guessing at steps.
+- `.claude/commands/cui.md`, `rui.md`, `iui.md`, `ftc.md` — one Claude Code command per shadcn/studio MCP workflow (`ftc.md` also has a Figma-only path for projects without a Studio license). Each calls the matching `mcp__shadcn-studio-mcp__get-*-instructions` tool live (rather than a copy baked into this file) and then applies the conventions below. If the user's request matches one of these workflows but they didn't type the slash command, invoke the same `get-*-instructions` tool directly instead of guessing at steps.
 - `.claude/skills/component/references/shadcn-studio-workflow.md` — why the workflows are structured as "collect everything, then install in one batch," the existing-component-vs-fetched-candidate comparison gate, and which command maps to which MCP instructions tool.
 - `.claude/skills/component/references/figma-to-shadcn-mapping.md` — Figma element → shadcn/ui component mapping table, used by `/ftc` when converting raw Figma markup.
 - `.claude/claude-shadcn.md` § "Component conventions" — the enforced conventions (named exports or whatever this project chose, `Props` type, `data-slot`, `cn()`, path aliases, no hardcoded colors, placement rules). Apply these to every component this skill produces; don't restate them here, they change independently of this skill.
@@ -24,7 +24,7 @@ This file points at the canonical rules rather than copying them — read the so
 | Building a new block/page section | `/cui` | `get-create-instructions` |
 | Editing/updating an existing component or block | `/rui` | `get-refine-instructions` |
 | Want design inspiration, nothing installed | `/iui` | `get-inspire-instructions` |
-| Converting a Figma design to code | `/ftc` | `get-ftc-instructions` (needs a Figma MCP server configured — not included in this template) |
+| Converting a Figma design to code | `/ftc` | `get-ftc-instructions` with a Studio license; Figma MCP + stock shadcn/ui without one (see `ftc.md`) |
 
 Don't hand-roll a distilled version of the tool sequence here — call the relevant `get-*-instructions` tool and follow what it returns; it's the vendor's source of truth and can change independently of this repo.
 

@@ -62,11 +62,29 @@ async function chooseStudio(cwd, opts, detection) {
         message: "Do you have a Shadcn Studio license?",
         initialValue: guess,
         options: [
-          { value: true, label: "Yes", hint: "installs /cui /rui /iui /ftc, the install-gate hook, and the @ss-* registries" },
+          { value: true, label: "Yes", hint: "installs /cui /rui /iui, the install-gate hook, and the @ss-* registries" },
           { value: false, label: "No", hint: "skill + conventions only; components come from `npx shadcn@latest add`" },
         ],
       }),
     guess,
+  )
+}
+
+async function chooseFigma(cwd, opts) {
+  if (opts.figma !== undefined) return opts.figma
+  const previous = readManifest(cwd).figma
+  return ask(
+    opts,
+    () =>
+      p.select({
+        message: "Do you build UI from Figma designs?",
+        initialValue: previous ?? true,
+        options: [
+          { value: true, label: "Yes", hint: "installs /ftc and adds Figma's remote MCP server to .mcp.json (one-time sign-in via /mcp)" },
+          { value: false, label: "No", hint: "skips /ftc and the Figma setup" },
+        ],
+      }),
+    previous ?? false,
   )
 }
 
@@ -97,20 +115,27 @@ async function offerAgent(cwd, opts, detection, plan, conflicts) {
   }
 }
 
-function nextSteps(studio) {
+function nextSteps(plan) {
   const steps = []
-  if (studio) {
+  const servers = plan.actions.find((a) => a.servers)?.servers ?? []
+  if (plan.studio) {
     steps.push("Put your Shadcn Studio EMAIL and LICENSE_KEY in .env (placeholders are in .env.example).")
-    steps.push("Connect the shadcn-studio-mcp MCP server in Claude Code (see shadcnstudio.com docs).")
+    if (servers.includes("shadcn-studio-mcp")) {
+      steps.push("Export SHADCN_STUDIO_API_KEY and SHADCN_STUDIO_EMAIL in your shell profile — Claude Code fills them into .mcp.json from the environment, not from .env.")
+    }
     if (spawnSync("jq", ["--version"], { stdio: "ignore" }).status !== 0) steps.push("Install jq — the Studio install-gate hook needs it (e.g. `brew install jq`).")
   }
-  steps.push("Commit .claude/ and CLAUDE.md so your team gets the same setup.")
+  if (plan.figma) {
+    steps.push("In Claude Code, run /mcp → figma → Authenticate (one-time browser sign-in). Then try /ftc <Figma URL with node-id>.")
+  }
+  if (servers.length) steps.push("The first time Claude Code opens this project it asks you to approve the servers in .mcp.json — approve them.")
+  steps.push(`Commit .claude/, CLAUDE.md${servers.length || plan.figma ? " and .mcp.json" : ""} so your team gets the same setup.`)
   return steps.map((s, i) => `${i + 1}. ${s}`).join("\n")
 }
 
 export async function init(cwd, opts) {
   if (!opts.yes && !process.stdin.isTTY) {
-    console.error("No interactive terminal detected. Re-run with --yes (and --studio or --no-studio) to accept defaults.")
+    console.error("No interactive terminal detected. Re-run with --yes (plus --studio/--no-studio and --figma/--no-figma) to accept defaults.")
     return 1
   }
   p.intro("claude-shadcn-cli")
@@ -128,7 +153,8 @@ export async function init(cwd, opts) {
     )
 
     const studio = await chooseStudio(cwd, opts, detection)
-    const plan = buildPlan(cwd, { studio, detection })
+    const figma = await chooseFigma(cwd, opts)
+    const plan = buildPlan(cwd, { studio, figma, detection })
     for (const warning of plan.warnings) p.log.warn(warning)
 
     if (plan.actions.every((a) => a.kind === "unchanged")) {
@@ -149,7 +175,7 @@ export async function init(cwd, opts) {
     if (conflicts.length) p.log.warn(`${conflicts.length} file(s) were kept as-is; the template versions are in ${INCOMING_DIR}/.`)
 
     await offerAgent(cwd, opts, detection, plan, conflicts)
-    p.note(nextSteps(studio), "Next steps")
+    p.note(nextSteps(plan), "Next steps")
     p.outro("Done.")
     return 0
   } catch (error) {

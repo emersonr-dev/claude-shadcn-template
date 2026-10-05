@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -14,18 +15,34 @@ permissions:
 
 jobs:
   test:
-    name: Test (Node ${{ matrix.node }}, ${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
+    name: Test (Node ${{ matrix.node }}, ubuntu-latest)
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
         node: [20, 22, 24]
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
           node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Smoke test (pack, install, init, hook)
+        run: npm run test:smoke
+
+  # macOS runners are often short on capacity, so PRs don't wait on them: this
+  # runs once (latest Node) after merging to main, or on demand from the Actions tab.
+  test-macos:
+    name: Test (Node 24, macos-latest)
+    if: github.event_name != 'pull_request'
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
           cache: npm
       - run: npm ci
       - run: npm test

@@ -26,7 +26,7 @@ echo "--- installing $TARBALL"
 (cd "$APP" && npm install --no-audit --no-fund --silent -D "$WORK/$TARBALL")
 
 echo "--- init (first run)"
-(cd "$APP" && npx --no-install claude-shadcn-cli init --yes --studio --no-ai)
+(cd "$APP" && npx --no-install claude-shadcn-cli init --yes --studio --figma --no-ai)
 for f in .claude/claude-shadcn.md .claude/settings.json .claude/commands/cui.md \
          .claude/hooks/check-shadcn-studio.sh .claude/skills/component/SKILL.md \
          .claude/.claude-shadcn-manifest.json .env.example .gitignore; do
@@ -37,10 +37,21 @@ grep -qx '@.claude/claude-shadcn.md' "$APP/CLAUDE.md" || fail "CLAUDE.md is miss
 grep -q 'Existing rules.' "$APP/CLAUDE.md" || fail "CLAUDE.md lost the user's content"
 jq -e '.registries["@ss-components"]' "$APP/components.json" >/dev/null || fail "registries not merged"
 grep -q 'CUSTOMIZE' "$APP/.claude/claude-shadcn.md" && fail "managed file still has [CUSTOMIZE] markers"
+assert_file .claude/commands/ftc.md
+jq -e '.mcpServers.figma.url == "https://mcp.figma.com/mcp"' "$APP/.mcp.json" >/dev/null || fail ".mcp.json is missing the Figma server"
+jq -e '.permissions.allow | index("mcp__figma__get_design_context")' "$APP/.claude/settings.json" >/dev/null || fail "Figma read tools not allowed"
 
 echo "--- init (second run must be a no-op)"
-(cd "$APP" && npx --no-install claude-shadcn-cli init --yes --studio --no-ai) | grep -q 'already up to date' \
+(cd "$APP" && npx --no-install claude-shadcn-cli init --yes --studio --figma --no-ai) | grep -q 'already up to date' \
   || fail "second run was not a no-op"
+
+echo "--- Figma without a Studio license"
+FIG="$WORK/figma-only" && mkdir -p "$FIG"
+cp "$APP/package.json" "$FIG/" && echo '{ "rsc": false, "tailwind": { "css": "src/index.css" } }' > "$FIG/components.json"
+(cd "$FIG" && node "$APP/node_modules/claude-shadcn-cli/bin/cli.js" init --yes --no-studio --figma --no-ai >/dev/null)
+[ -f "$FIG/.claude/commands/ftc.md" ] || fail "/ftc missing without a Studio license"
+[ ! -e "$FIG/.claude/commands/cui.md" ] || fail "/cui installed without a Studio license"
+jq -e '.mcpServers | has("figma")' "$FIG/.mcp.json" >/dev/null || fail "figma-only .mcp.json is missing the Figma server"
 
 echo "--- hook decisions"
 HOOK="$APP/.claude/hooks/check-shadcn-studio.sh"

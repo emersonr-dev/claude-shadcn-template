@@ -5,7 +5,7 @@
 <!-- studio:start -->
 ## Shadcn Studio credentials
 
-- `EMAIL` / `LICENSE_KEY` (in `.env`, gitignored) — Shadcn Studio registry auth, used by `components.json`'s `@ss-components`/`@ss-themes`/`@ss-blocks` registries. Required for the `/cui`, `/rui`, `/iui`, `/ftc` commands below.
+- `EMAIL` / `LICENSE_KEY` (in `.env`, gitignored) — Shadcn Studio registry auth, used by `components.json`'s `@ss-components`/`@ss-themes`/`@ss-blocks` registries. Required for the `/cui`, `/rui`, `/iui` commands below and for `/ftc`'s block installs.
 <!-- studio:end -->
 
 ## Component conventions (see `.claude/skills/component` and its `references/`)
@@ -32,14 +32,19 @@ This is a shadcn/ui-first project — these rules are strict, not stylistic pref
 <!-- studio:start -->
 ## shadcn/ui workflow commands
 
-Four commands wrap the Shadcn Studio MCP server (`shadcn-studio-mcp`) for structured component work. Each command file is the source of truth for its own step order; `.claude/skills/component/references/shadcn-studio-workflow.md` covers the rules shared across all four.
+These commands wrap the Shadcn Studio MCP server (`shadcn-studio-mcp`) for structured component work. Each command file is the source of truth for its own step order; `.claude/skills/component/references/shadcn-studio-workflow.md` covers the rules they share.
 
 | Situation | Command |
 |---|---|
 | Building a new block/page section | `/cui` |
 | Editing/updating an existing component or block | `/rui` |
 | Design inspiration only, nothing installed | `/iui` |
-| Converting a Figma design to code | `/ftc` (needs a Figma MCP server configured separately — not included in this template) |
 
-All four gate any install behind a comparison against what already exists in the project (don't silently reinstall or duplicate a component that already covers the request), and fall back to the plain `npx shadcn@latest add` CLI when the target is a stock component with no Shadcn Studio variant involved. See the reference doc for the exact rule.
+All of them gate any install behind a comparison against what already exists in the project (don't silently reinstall or duplicate a component that already covers the request), and fall back to the plain `npx shadcn@latest add` CLI when the target is a stock component with no Shadcn Studio variant involved. See the reference doc for the exact rule.
 <!-- studio:end -->
+
+<!-- figma:start -->
+## Figma to code
+
+`/ftc <Figma URL with node-id>` converts a Figma frame using Figma's remote MCP server (`figma` in `.mcp.json`; authenticate once via `/mcp` → figma → Authenticate). With Shadcn Studio it installs the matching Pro/Free blocks; without it, it maps the design onto stock shadcn/ui components. Either way, images are saved into the project (never linked from Figma) and colors map to existing CSS tokens. `.claude/commands/ftc.md` has the exact steps.
+<!-- figma:end -->
