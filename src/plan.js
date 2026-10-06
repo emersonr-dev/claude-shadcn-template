@@ -123,10 +123,16 @@ export function buildPlan(cwd, { studio, figma, detection, personal = personalSe
 
   // 7. .gitignore — keep secrets and personal settings out of git.
   const gitignore = readText(join(cwd, ".gitignore"))
-  const gitignoreAfter = ensureLines(gitignore, [
+  const gitignoreEntries = [
     { line: ".env", present: /^\/?\.env\*?$/m },
     { line: ".claude/settings.local.json", present: /^\/?\.claude\/settings\.local\.json$/m },
-  ])
+  ]
+  // create-next-app and friends ship a blanket `.env*`, which also swallows the
+  // .env.example written above — so the placeholders a teammate needs would never
+  // reach the repo. Git resolves the last matching pattern, and ensureLines appends,
+  // so the negation always lands after whatever ignores it.
+  if (studio) gitignoreEntries.push({ line: "!.env.example", present: /^!\/?\.env\.example$/m })
+  const gitignoreAfter = ensureLines(gitignore, gitignoreEntries)
   actions.push(classifyMerged(cwd, ".gitignore", gitignore, gitignoreAfter, "ignore .env and personal Claude settings"))
 
   return { actions, warnings, studio, figma }

@@ -21,6 +21,8 @@ cat > "$APP/package.json" <<'JSON'
 JSON
 echo '{ "rsc": false, "tailwind": { "css": "src/index.css" } }' > "$APP/components.json"
 printf '# Smoke app\n\nExisting rules.\n' > "$APP/CLAUDE.md"
+# A blanket `.env*`, the way create-next-app ships it.
+printf 'node_modules\n.env*\n' > "$APP/.gitignore"
 
 echo "--- installing $TARBALL"
 (cd "$APP" && npm install --no-audit --no-fund --silent -D "$WORK/$TARBALL")
@@ -40,6 +42,14 @@ grep -q 'CUSTOMIZE' "$APP/.claude/claude-shadcn.md" && fail "managed file still 
 assert_file .claude/commands/ftc.md
 jq -e '.mcpServers.figma.url == "https://mcp.figma.com/mcp"' "$APP/.mcp.json" >/dev/null || fail ".mcp.json is missing the Figma server"
 jq -e '.permissions.allow | index("mcp__figma__get_design_context")' "$APP/.claude/settings.json" >/dev/null || fail "Figma read tools not allowed"
+jq -e '.permissions.allow | index("mcp__shadcn-studio-mcp__*") | not' "$APP/.claude/settings.json" >/dev/null \
+  || fail "Studio MCP tools must not be wildcard-allowed"
+jq -e '.permissions.allow | index("Bash(npx shadcn@latest add:*)") | not' "$APP/.claude/settings.json" >/dev/null \
+  || fail "open-ended shadcn add must not be pre-approved"
+
+# Ask git itself, since the whole point is whether the file can be committed.
+(cd "$APP" && git init -q . && git check-ignore -q .env.example) \
+  && fail ".env.example is gitignored, so the placeholders never reach the repo"
 
 echo "--- init (second run must be a no-op)"
 (cd "$APP" && npx --no-install claude-shadcn-cli init --yes --studio --figma --no-ai) | grep -q 'already up to date' \

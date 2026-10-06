@@ -1,8 +1,19 @@
 {
   "permissions": {
     "allow": [
-      "mcp__shadcn-studio-mcp__*",
-      "Bash(npx shadcn@latest add:*)",
+      "mcp__shadcn-studio-mcp__get-blocks-metadata",
+      "mcp__shadcn-studio-mcp__get-block-meta-content",
+      "mcp__shadcn-studio-mcp__get-component-content",
+      "mcp__shadcn-studio-mcp__get-component-meta-content",
+      "mcp__shadcn-studio-mcp__get-inspiration-block-content",
+      "mcp__shadcn-studio-mcp__get-create-instructions",
+      "mcp__shadcn-studio-mcp__get-refine-instructions",
+      "mcp__shadcn-studio-mcp__get-inspire-instructions",
+      "mcp__shadcn-studio-mcp__get-ftc-instructions",
+      "mcp__shadcn-studio-mcp__parse-figma-blocks",
+      "Bash(npx shadcn@latest add @ss-components/:*)",
+      "Bash(npx shadcn@latest add @ss-blocks/:*)",
+      "Bash(npx shadcn@latest add @ss-themes/:*)",
       "Bash(npm run build)",
       "Bash(npm run lint)",
       "mcp__figma__get_metadata",

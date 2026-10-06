@@ -74,7 +74,7 @@ npm i -D /path/to/claude-shadcn-cli-0.2.0.tgz
 Nothing runs on install. `init` is an explicit command that asks a few questions and always shows a plan before writing anything:
 
 1. **Checks the stack.** It stops with no `package.json` or no `react` dependency. With React but no `components.json`, it offers to run `npx shadcn@latest init` first. It reads the framework, package manager, `rsc` and global CSS path from the project.
-2. **Asks whether you have a Shadcn Studio license.** Without one it skips `/cui`, `/rui`, `/iui`, the hook, and the `@ss-*` registries.
+2. **Asks whether you have a Shadcn Studio license.** Without one it skips `/cui`, `/rui`, `/iui`, the hook, and the `@ss-*` registries. With one, it allows Studio's read-only browse and metadata tools without a prompt; the tools that actually install something — `collect_selected_*`, `get_add_command_for_*`, `install-theme` — still ask, on the same principle as the Figma rules below. `install-theme` in particular rewrites your global CSS wholesale, so it should never land unprompted.
 3. **Asks whether you build UI from Figma designs.** If yes, it installs `/ftc` and the Figma mapping reference, adds Figma's remote MCP server to `.mcp.json`, and allows Figma's read-only tools (`get_metadata`, `get_design_context`, `get_variable_defs`, `get_screenshot`) without a prompt. Figma's write tools still ask.
 4. **Shows the plan**: `+` new, `↑` update, `~` merge into existing, `!` conflict, `=` up to date. Then it asks before applying.
 5. **Installs without overwriting your work:**
@@ -82,7 +82,7 @@ Nothing runs on install. `init` is an explicit command that asks a few questions
    - `CLAUDE.md`: if you have one, it only gains a `@.claude/claude-shadcn.md` import line. If you don't, the skeleton is created.
    - `.claude/settings.json` is merged: permission rules are combined, and only this tool's own hook entries are added or replaced. `npm run` rules are rewritten for your package manager and dropped for scripts you don't have.
    - `.mcp.json` gains only the servers you don't already have, whether in the project or in your own Claude Code config (user or local scope). Existing entries are never edited. If you have a Studio license but no `shadcn-studio-mcp` server yet, it's added with `${SHADCN_STUDIO_API_KEY}`/`${SHADCN_STUDIO_EMAIL}` references, so no secret is committed. Export those two variables in your shell profile, because Claude Code reads them from the environment, not from `.env`. The first time Claude Code opens the project, it asks you to approve the servers in `.mcp.json`.
-   - With a Studio license, the registries are added to `components.json` (existing entries are never changed) and `EMAIL=`/`LICENSE_KEY=` placeholders go into `.env.example`. `.gitignore` gains `.env` and `.claude/settings.local.json`.
+   - With a Studio license, the registries are added to `components.json` (existing entries are never changed) and `EMAIL=`/`LICENSE_KEY=` placeholders go into `.env.example`. `.gitignore` gains `.env`, `.claude/settings.local.json`, and `!.env.example` — without that negation a blanket `.env*` (what create-next-app ships) swallows the placeholder file too, and nobody who clones the repo ever learns which variables it needs.
 6. **Offers Claude Code**, if `claude` is on your PATH, to fill the new `CLAUDE.md`'s `[CUSTOMIZE]` sections and/or merge conflicts. This uses tokens. It runs headless (`claude -p`) with read tools plus `Edit` on only the files involved.
 
 Re-running is safe. `.claude/.claude-shadcn-manifest.json` records what was installed, so files you never touched are updated to the newer template and files you edited become conflicts.
@@ -226,6 +226,8 @@ Both entry points share the same decision logic:
 - No `components.json` at all → **deny**. This isn't a shadcn/ui project yet; nothing to install into.
 - `components.json` exists but has no `@ss-components` registry → **ask**. Likely just missing the Studio registries merge (the CLI's Studio option, or step 3 of [Manual installation](#manual-installation)), not a structural problem — so it defers to you rather than hard-blocking.
 - Registries present (or the Bash command doesn't touch Studio at all) → **no opinion**: the hook exits silently and your normal permission settings (allowlist, Auto Mode, prompts) decide. The hook only ever denies or asks, never auto-approves.
+
+That last branch is why the shipped allowlist is deliberately narrow. In a correctly configured project the hook has no opinion, so whatever is in `permissions.allow` is what actually decides — a wildcard there would mean the hook passes, the allowlist auto-approves, and an `install-theme` call rewrites your global CSS with nothing in between. The allowlist therefore covers only Studio's read-only browse and metadata tools, and scopes `npx shadcn@latest add` to the `@ss-*` registries rather than leaving it open-ended (the command also accepts a URL, and a permission rule is a prefix match with no argument analysis, so an open-ended rule pre-approves arbitrary registry JSON writing files anywhere in the project).
 
 The prose checks stay because they carry judgment a hook can't (e.g. `/rui`'s "is this even a Studio question" branch); the hook exists because "the model complied with the instructions" isn't the same guarantee as "the harness enforced it."
 
