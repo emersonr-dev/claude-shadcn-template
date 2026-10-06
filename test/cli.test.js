@@ -108,6 +108,29 @@ test("settings: merge is additive, idempotent, and replaces only our hook groups
   assert.ok(!noStudio.permissions.allow.some((r) => r.startsWith("mcp__figma__")))
   assert.equal(noStudio.hooks, undefined)
   assert.ok(!noStudio.permissions.allow.some((r) => r.startsWith("mcp__shadcn-studio")))
+  assert.ok(!noStudio.permissions.allow.some((r) => r.includes("@ss-")), "Studio registry installs must drop without a license")
+})
+
+test("settings: nothing that writes is pre-approved", () => {
+  const allow = JSON.parse(readFileSync(join(PKG_ROOT, ".claude/settings.json"), "utf8")).permissions.allow
+
+  // A wildcard would also cover install-theme (it rewrites globals.css wholesale)
+  // and every tool the server adds in future versions.
+  assert.ok(!allow.some((r) => r.endsWith("*") && !r.includes("(")), "no bare MCP wildcards")
+
+  // The install-capable Studio tools are exactly the ones the PreToolUse hook
+  // matches; the allowlist must not short-circuit that gate.
+  const hook = JSON.parse(readFileSync(join(PKG_ROOT, ".claude/settings.json"), "utf8")).hooks.PreToolUse[0]
+  for (const gated of hook.matcher.split("|")) {
+    assert.ok(!allow.includes(gated), `${gated} is hook-gated and must not be pre-approved`)
+  }
+
+  // `shadcn add` accepts a URL, so an open-ended rule pre-approves arbitrary
+  // registry JSON writing files anywhere in the project.
+  assert.ok(!allow.includes("Bash(npx shadcn@latest add:*)"), "open-ended shadcn add must not be pre-approved")
+  for (const r of allow.filter((r) => r.startsWith("Bash(npx shadcn"))) {
+    assert.match(r, /^Bash\(npx shadcn@latest add @ss-(components|blocks|themes)\/:\*\)$/)
+  }
 })
 
 test("plan: fresh project gets everything, second run is a no-op", () => {
@@ -118,6 +141,7 @@ test("plan: fresh project gets everything, second run is a no-op", () => {
   assert.ok(statSync(join(dir, ".claude/hooks/check-shadcn-studio.sh")).mode & 0o100)
   assert.ok(JSON.parse(read(dir, "components.json")).registries["@ss-components"])
   assert.match(read(dir, ".gitignore"), /^\.claude\/settings\.local\.json$/m)
+  assert.match(read(dir, ".gitignore"), /^!\.env\.example$/m)
 
   assert.ok(existsSync(join(dir, ".claude/commands/ftc.md")))
   assert.deepEqual(JSON.parse(read(dir, ".mcp.json")).mcpServers.figma, FIGMA_SERVER)
@@ -125,6 +149,23 @@ test("plan: fresh project gets everything, second run is a no-op", () => {
 
   const second = planFor(dir, true)
   assert.deepEqual(second.actions.filter((a) => a.kind !== "unchanged"), [])
+})
+
+test("gitignore: a blanket .env* does not swallow the .env.example we write", () => {
+  // create-next-app's default .gitignore. The `.env` entry is already satisfied
+  // by `.env*`, so without the negation nothing gets appended and the
+  // placeholders never reach the repo.
+  const dir = project({ ...nextApp(), ".gitignore": "node_modules\n.env*\n" })
+  run(dir, true)
+  const gitignore = read(dir, ".gitignore")
+  assert.match(gitignore, /^!\.env\.example$/m)
+  assert.ok(gitignore.indexOf("!.env.example") > gitignore.indexOf(".env*"), "negation must come after the pattern it undoes")
+  assert.ok(existsSync(join(dir, ".env.example")))
+
+  // Without a license the CLI writes no .env.example, so it adds no negation.
+  const noStudio = project({ ...nextApp(), ".gitignore": "node_modules\n.env*\n" })
+  run(noStudio, false)
+  assert.doesNotMatch(read(noStudio, ".gitignore"), /!\.env\.example/)
 })
 
 test("plan: without a license or Figma, Studio and Figma files are skipped", () => {

@@ -1,6 +1,8 @@
 import { isDeepStrictEqual } from "node:util"
 
-const STUDIO_PERMISSION = /^mcp__shadcn-studio-mcp__/
+// The Studio MCP tools and the registry-scoped `npx shadcn add @ss-…` rules are
+// both meaningless without a license, so they drop out together.
+const STUDIO_PERMISSION = /^(?:mcp__shadcn-studio-mcp__|Bash\(npx shadcn@latest add @ss-)/
 const FIGMA_PERMISSION = /^mcp__figma__/
 const RUN_SCRIPT = /^Bash\(npm run ([\w:-]+)\)$/
 const HOOK_SCRIPT = "check-shadcn-studio.sh"
