@@ -1,0 +1,34 @@
+name: Version check
+
+# Fails a PR that changes shipped files (package.json `files`) or runtime
+# dependencies without raising package.json's version, so the change can be
+# released. Docs, tests and CI changes pass without a bump. For a shipped change
+# that really shouldn't be released, add the `skip-version-check` label.
+# Separate from ci.yml so adding/removing that label re-runs only this check.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+jobs:
+  version-bump:
+    name: Version bump
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skipped by label
+        if: contains(github.event.pull_request.labels.*.name, 'skip-version-check')
+        run: echo "skip-version-check label present; not checking the version."
+      - uses: actions/checkout@v5
+        if: "!contains(github.event.pull_request.labels.*.name, 'skip-version-check')"
+        with:
+          fetch-depth: 0 # needs the base branch to diff against
+      - uses: actions/setup-node@v5
+        if: "!contains(github.event.pull_request.labels.*.name, 'skip-version-check')"
+        with:
+          node-version: 24
+      - name: Require a version bump for shipped changes
+        if: "!contains(github.event.pull_request.labels.*.name, 'skip-version-check')"
+        run: node scripts/check-version-bump.mjs "origin/${{ github.base_ref }}"

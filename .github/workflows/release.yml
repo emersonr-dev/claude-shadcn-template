@@ -2,6 +2,7 @@ name: Release
 
 # To release:
 #   1. Bump "version" in package.json (e.g. `npm version 0.3.0 --no-git-tag-version`) in a PR.
+#      The "Version bump" check (version-check.yml) fails PRs that change shipped files without one.
 #   2. Merge it into main once CI passes.
 #   3. On the updated main: `git tag vX.Y.Z && git push origin vX.Y.Z`
 # This workflow then checks the tag, runs the tests, and attaches the packed tarball to a
