@@ -62,11 +62,11 @@ npx github:emersonr-dev/claude-shadcn-template init
 
 ```bash
 # the .tgz attached to a GitHub Release
-npm i -D https://github.com/emersonr-dev/claude-shadcn-template/releases/download/v0.2.0/claude-shadcn-cli-0.2.0.tgz
+npm i -D https://github.com/emersonr-dev/claude-shadcn-template/releases/download/v0.2.3/claude-shadcn-cli-0.2.3.tgz
 # a local checkout, e.g. while working on the CLI itself
 npm i -D file:../claude-shadcn-template
 # a tarball you built yourself with `npm pack`
-npm i -D /path/to/claude-shadcn-cli-0.2.0.tgz
+npm i -D /path/to/claude-shadcn-cli-0.2.3.tgz
 ```
 
 </details>
