@@ -37,4 +37,3 @@ export function listFiles(base, dir) {
     .map((entry) => relative(base, join(entry.parentPath ?? entry.path, entry.name)).split(sep).join("/"))
     .sort()
 }
-// temporary: verifying the Version bump check fails in CI
