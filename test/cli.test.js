@@ -6,7 +6,7 @@ import { dirname, join } from "node:path"
 import { detectProject } from "../src/detect.js"
 import { buildPlan } from "../src/plan.js"
 import { applyPlan } from "../src/apply.js"
-import { renderManagedMd, renderSkeleton, MANUAL_HINT, EXPORT_MARKER, RSC_MARKER, CSS_MARKER } from "../src/render.js"
+import { renderManagedMd, renderSkeleton, refreshCommand, MANUAL_HINT, EXPORT_MARKER, RSC_MARKER, CSS_MARKER, REFRESH_MARKER } from "../src/render.js"
 import { mergeSettings, renderSettings } from "../src/merge.js"
 import { mergeMcpJson, personalServers, FIGMA_SERVER } from "../src/mcp.js"
 import { PKG_ROOT, INCOMING_DIR, sha256 } from "../src/util.js"
@@ -58,7 +58,7 @@ test("detect: reads framework, package manager, rsc and css from the project", (
 
 test("render: every marker the CLI replaces exists in the template", () => {
   const source = readFileSync(join(PKG_ROOT, ".claude/claude-shadcn.md"), "utf8")
-  for (const marker of [MANUAL_HINT, EXPORT_MARKER, RSC_MARKER, CSS_MARKER]) assert.ok(source.includes(marker), marker)
+  for (const marker of [MANUAL_HINT, EXPORT_MARKER, RSC_MARKER, CSS_MARKER, REFRESH_MARKER]) assert.ok(source.includes(marker), marker)
 })
 
 test("render: the managed file's HTML comments never nest (a nested --> leaks text into Claude's context)", () => {
@@ -69,7 +69,7 @@ test("render: the managed file's HTML comments never nest (a nested --> leaks te
 test("render: managed file resolves markers and regions", () => {
   const source = readFileSync(join(PKG_ROOT, ".claude/claude-shadcn.md"), "utf8")
   const studioRsc = renderManagedMd(source, { studio: true, figma: true, rsc: true, cssFile: "app/globals.css" })
-  assert.doesNotMatch(studioRsc, /CUSTOMIZE|:start -->|:end -->/)
+  assert.doesNotMatch(studioRsc, /CUSTOMIZE|REFRESH-COMMAND|:start -->|:end -->/)
   assert.match(studioRsc, /"use client"/)
   assert.match(studioRsc, /`\/cui`/)
   assert.match(studioRsc, /`app\/globals\.css`/)
@@ -299,4 +299,49 @@ test("conventions: cn is imported from the cn npm package, as shadcn's own tools
   const skill = readFileSync(join(PKG_ROOT, ".claude/skills/component/SKILL.md"), "utf8")
   assert.ok(!skill.includes('import { cn } from "@/lib/utils"'), "skill examples must not import cn from @/lib/utils")
   assert.match(skill, /import \{ cn \} from "cn"/)
+})
+
+// `npx claude-shadcn-cli` resolves node_modules/.bin before the registry, so the bare
+// name works only where this package is a dependency. Projects set up with the one-off
+// `npx github:…` form have no such bin and npx falls back to the registry, where this
+// package is unpublished — so each project has to be told the invocation that is true
+// for it, rather than one hardcoded guess.
+test("refresh command: the bare bin for a dependency, the repo URL otherwise", () => {
+  assert.equal(refreshCommand(true), "npx claude-shadcn-cli init")
+  assert.equal(refreshCommand(false), "npx github:emersonr-dev/claude-shadcn-template init")
+})
+
+test("detect: spots this package in the target project's dependencies", () => {
+  assert.equal(detectProject(project(nextApp())).installedAsDependency, false)
+  const asDep = project({
+    ...nextApp(),
+    "package.json": {
+      dependencies: { next: "15.0.0", react: "19.0.0" },
+      devDependencies: { "claude-shadcn-cli": "github:emersonr-dev/claude-shadcn-template#semver:^0.2.0" },
+    },
+  })
+  assert.equal(detectProject(asDep).installedAsDependency, true)
+})
+
+test("refresh command: reaches both the managed file and the merge checklist", () => {
+  const oneOff = project(nextApp())
+  run(oneOff, true)
+  assert.match(read(oneOff, ".claude/claude-shadcn.md"), /npx github:emersonr-dev\/claude-shadcn-template init/)
+  assert.doesNotMatch(read(oneOff, ".claude/claude-shadcn.md"), /npx claude-shadcn-cli init/)
+
+  // A project that pinned this package as a devDependency keeps using its own copy.
+  const asDep = project({
+    ...nextApp(),
+    "package.json": {
+      dependencies: { next: "15.0.0", react: "19.0.0" },
+      devDependencies: { "claude-shadcn-cli": "github:emersonr-dev/claude-shadcn-template#semver:^0.2.0" },
+    },
+    // an edited CLAUDE.md forces a conflict, so MERGE.md gets written too
+    "CLAUDE.md": "# Mine\n\n@.claude/claude-shadcn.md\n",
+    ".claude/claude-shadcn.md": "stale, hand-edited\n",
+  })
+  const { conflicts } = run(asDep, true)
+  assert.ok(conflicts.some((c) => c.path === ".claude/claude-shadcn.md"), "expected a conflict to produce MERGE.md")
+  assert.match(read(asDep, `${INCOMING_DIR}/MERGE.md`), /npx claude-shadcn-cli init/)
+  assert.doesNotMatch(read(asDep, `${INCOMING_DIR}/MERGE.md`), /npx github:/)
 })

@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs"
 import { join } from "node:path"
-import { renderManagedMd, renderSkeleton, importBlock } from "./render.js"
+import { renderManagedMd, renderSkeleton, importBlock, refreshCommand } from "./render.js"
 import {
   renderSettings,
   mergeSettings,
@@ -168,5 +168,5 @@ export function buildPlan(cwd, { studio, figma, detection, personal = personalSe
   const gitignoreAfter = ensureLines(gitignore, gitignoreEntries)
   actions.push(classifyMerged(cwd, ".gitignore", gitignore, gitignoreAfter, "ignore .env and personal Claude settings"))
 
-  return { actions, warnings, studio, figma }
+  return { actions, warnings, studio, figma, refreshCommand: refreshCommand(detection.installedAsDependency) }
 }
