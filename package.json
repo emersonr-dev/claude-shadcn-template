@@ -1,6 +1,6 @@
 {
   "name": "claude-shadcn-cli",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "description": "Installs a Claude Code setup (commands, hooks, skills, CLAUDE.md conventions) for React + shadcn/ui projects.",
   "type": "module",

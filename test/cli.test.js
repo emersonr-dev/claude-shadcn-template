@@ -237,3 +237,66 @@ test("mcp: reads user- and local-scope servers from ~/.claude.json", () => {
   assert.deepEqual(Object.keys(personalServers("/proj", join(dir, "claude.json"))), ["a", "b"])
   assert.deepEqual(personalServers("/proj", join(dir, "missing.json")), {})
 })
+
+// shadcn only serves the v4 component sources (the ones with `data-slot`) when
+// components.json's `tailwind.config` is "". A leftover path there is dead for
+// Tailwind v4, which configures itself in CSS, but it silently downgrades every
+// `shadcn add` to the pre-v4 forwardRef sources.
+const v4App = (config, extra = {}) => ({
+  ...nextApp(),
+  "package.json": {
+    dependencies: { next: "15.0.0", react: "19.0.0" },
+    devDependencies: { tailwindcss: "^4.1.0" },
+    scripts: { build: "next build" },
+  },
+  "components.json": { rsc: true, style: "new-york", tailwind: { config, css: "app/globals.css" } },
+  ...extra,
+})
+
+test("components.json: clears a dead tailwind.config so shadcn serves the v4 sources", () => {
+  const dir = project(v4App("tailwind.config.ts"))
+  const { plan } = run(dir, true)
+  assert.equal(JSON.parse(read(dir, "components.json")).tailwind.config, "")
+  assert.match(plan.actions.find((a) => a.path === "components.json").reason, /clear dead tailwind\.config/)
+  // and the registries still land in the same single write
+  assert.ok(JSON.parse(read(dir, "components.json")).registries["@ss-components"])
+})
+
+test("components.json: the v4 fix does not need a Studio license", () => {
+  const dir = project(v4App("tailwind.config.ts"))
+  run(dir, false)
+  const after = JSON.parse(read(dir, "components.json"))
+  assert.equal(after.tailwind.config, "")
+  assert.equal(after.registries, undefined)
+})
+
+test("components.json: warns, and changes nothing, when the tailwind config really exists", () => {
+  const dir = project({ ...v4App("tailwind.config.ts"), "tailwind.config.ts": "export default {}\n" })
+  const plan = planFor(dir, true)
+  assert.match(plan.warnings.join("\n"), /points tailwind\.config at tailwind\.config\.ts, which exists/)
+  assert.equal(JSON.parse(read(dir, "components.json")).tailwind.config, "tailwind.config.ts")
+})
+
+test("components.json: Tailwind v3 projects and already-empty configs are left alone", () => {
+  const v3 = project({
+    ...v4App("tailwind.config.ts"),
+    "package.json": {
+      dependencies: { next: "15.0.0", react: "19.0.0" },
+      devDependencies: { tailwindcss: "^3.4.0" },
+      scripts: {},
+    },
+  })
+  assert.equal(kinds(planFor(v3, false))["components.json"], "unchanged")
+
+  const already = project(v4App(""))
+  assert.equal(kinds(planFor(already, false))["components.json"], "unchanged")
+})
+
+test("conventions: cn is imported from the cn npm package, as shadcn's own tools write it", () => {
+  const managed = readFileSync(join(PKG_ROOT, ".claude/claude-shadcn.md"), "utf8")
+  assert.match(managed, /import \{ cn \} from "cn"/)
+  assert.match(managed, /resolves from `node_modules`/)
+  const skill = readFileSync(join(PKG_ROOT, ".claude/skills/component/SKILL.md"), "utf8")
+  assert.ok(!skill.includes('import { cn } from "@/lib/utils"'), "skill examples must not import cn from @/lib/utils")
+  assert.match(skill, /import \{ cn \} from "cn"/)
+})

@@ -71,3 +71,34 @@ export function ensureLines(text, entries) {
   const prefix = current === "" || current.endsWith("\n") ? current : current + "\n"
   return prefix + missing.map(({ line }) => line).join("\n") + "\n"
 }
+
+/** Leading major version of a semver range like "^4.1.0", "~3.4" or "4". Null when unparseable. */
+export function majorVersion(range) {
+  const match = String(range ?? "").match(/(\d+)/)
+  return match ? Number(match[1]) : null
+}
+
+/**
+ * shadcn picks which generation of component source to serve from components.json, and only
+ * serves the v4 one — the generation carrying `data-slot` — when `tailwind.config` is `""`.
+ * Tailwind v4 keeps its config in CSS, so a path left in that field points at a file that
+ * usually doesn't exist; it is dead for Tailwind's purposes but still silently downgrades
+ * every `shadcn add` to the pre-v4 `forwardRef` sources, which have no `data-slot` at all.
+ * That contradicts the `data-slot` rule these conventions mandate, and nothing surfaces it.
+ *
+ * Only the provably-dead case is normalized: a v4 project whose `tailwind.config` names a
+ * file that isn't on disk. When the file does exist the project may really be driving
+ * Tailwind from it, so the caller warns instead and leaves the value alone.
+ */
+export function normalizeTailwindConfig(componentsJson) {
+  const out = structuredClone(componentsJson)
+  const previous = out.tailwind.config
+  out.tailwind.config = ""
+  return { result: out, previous }
+}
+
+/** Whether `tailwind.config` is a non-empty path, i.e. a candidate for the check above. */
+export function hasTailwindConfigPath(componentsJson) {
+  const config = componentsJson?.tailwind?.config
+  return typeof config === "string" && config !== ""
+}

@@ -37,7 +37,7 @@ Use only when the MCP server returns no suitable match, or as a structural guide
 ### Simple component (no variants)
 
 ```tsx
-import { cn } from "@/lib/utils"
+import { cn } from "cn"
 
 interface MyComponentProps extends React.ComponentPropsWithoutRef<"div"> {
   // add custom props here
@@ -63,7 +63,7 @@ export type { MyComponentProps }
 
 ```tsx
 import { cva, type VariantProps } from "class-variance-authority"
-import { cn } from "@/lib/utils"
+import { cn } from "cn"
 
 const myComponentVariants = cva(
   "/* base classes */",
@@ -109,7 +109,7 @@ export type { MyComponentProps }
 
 import * as React from "react"
 import * as SomePrimitive from "@radix-ui/react-some-primitive"
-import { cn } from "@/lib/utils"
+import { cn } from "cn"
 
 const MyComponent = React.forwardRef<
   React.ElementRef<typeof SomePrimitive.Root>,
@@ -133,7 +133,7 @@ export { MyComponent }
 "use client" // RSC frameworks only — omit on a plain client-rendered React app
 
 import { useState } from "react"
-import { cn } from "@/lib/utils"
+import { cn } from "cn"
 
 interface MyComponentProps {
   defaultValue?: string
