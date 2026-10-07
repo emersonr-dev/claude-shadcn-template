@@ -1,6 +1,9 @@
 import { existsSync } from "node:fs"
 import { join } from "node:path"
-import { readJson } from "./util.js"
+import { PKG_ROOT, readJson } from "./util.js"
+
+// This package's own name, so the check below follows a rename of it.
+const SELF_NAME = readJson(join(PKG_ROOT, "package.json"))?.name ?? "claude-shadcn-cli"
 
 const FRAMEWORKS = [
   ["next", "Next.js"],
@@ -74,6 +77,7 @@ export function detectProject(cwd) {
     framework: detectFramework(cwd, deps),
     reactVersion: deps.react,
     tailwindVersion: deps.tailwindcss,
+    installedAsDependency: Boolean(deps[SELF_NAME]),
     typescript: Boolean(deps.typescript) || existsSync(join(cwd, "tsconfig.json")),
     packageManager,
     scripts: pkg.scripts ?? {},

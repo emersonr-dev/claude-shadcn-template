@@ -22,9 +22,29 @@ export const EXPORT_MARKER =
   "`[CUSTOMIZE]` Named exports only (no `export default`) for new `components/ui/*` and `components/providers/*` components — or pick a different export convention and state it here; whatever is chosen, keep it consistent project-wide and call out any exceptions (e.g. page/route files following a framework's own convention)."
 export const RSC_MARKER = "`[CUSTOMIZE — RSC frameworks only]` "
 export const CSS_MARKER = "`[CUSTOMIZE: e.g. app/globals.css for Next.js App Router, src/index.css for Vite]`"
+export const REFRESH_MARKER = "`[REFRESH-COMMAND]`"
+
+const BIN_INVOCATION = "npx claude-shadcn-cli init"
+const REPO_INVOCATION = "npx github:emersonr-dev/claude-shadcn-template init"
+
+/**
+ * How a given project should re-run `init`.
+ *
+ * `npx claude-shadcn-cli` is a *local bin*: npx resolves `node_modules/.bin` before
+ * the registry, so the bare name only works where this package is a dependency. A
+ * project set up with the one-off `npx github:…` form has no such bin, and npx falls
+ * back to the registry — where this package is not published, so the command 404s.
+ *
+ * Printing the repo URL everywhere instead would defeat a pinned consumer's
+ * `#semver:` range, because that form tracks the default branch rather than a tag.
+ * So each project is told the one that is true for it.
+ */
+export function refreshCommand(installedAsDependency) {
+  return installedAsDependency ? BIN_INVOCATION : REPO_INVOCATION
+}
 
 /** Renders `.claude/claude-shadcn.md` for a project. */
-export function renderManagedMd(source, { studio, figma, rsc, cssFile }) {
+export function renderManagedMd(source, { studio, figma, rsc, cssFile, installedAsDependency }) {
   let text = applyRegions(source, { studio, "no-studio": !studio, figma, rsc })
   text = replaceExact(text, MANUAL_HINT, "")
   text = replaceExact(
@@ -34,6 +54,7 @@ export function renderManagedMd(source, { studio, figma, rsc, cssFile }) {
   )
   if (rsc) text = replaceExact(text, RSC_MARKER, "")
   if (cssFile) text = replaceExact(text, CSS_MARKER, `\`${cssFile}\``)
+  text = replaceExact(text, REFRESH_MARKER, `\`${refreshCommand(installedAsDependency)}\``)
   return tidy(text)
 }
 

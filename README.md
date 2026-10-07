@@ -80,6 +80,7 @@ Nothing runs on install. `init` is an explicit command that asks a few questions
 5. **Installs without overwriting your work:**
    - Commands, hooks and skills are copied. A file you already have that differs from the template is a **conflict**: yours is kept, and the template's copy goes to `.claude-shadcn-incoming/` with a `MERGE.md` checklist and a ready-made prompt for your AI agent.
    - `CLAUDE.md`: if you have one, it only gains a `@.claude/claude-shadcn.md` import line. If you don't, the skeleton is created.
+   - The managed conventions file is told how *this* project re-runs `init`, because the two install forms need different commands. `npx claude-shadcn-cli` is a local bin — npx resolves `node_modules/.bin` before the registry — so it works only where this package is a dependency; a project set up with the one-off `npx github:…` form has no such bin and npx falls back to the registry, where this package isn't published. Hardcoding the repo URL for everyone would instead defeat a pinned consumer's `#semver:` range, since that form tracks the default branch. The same command is used in `MERGE.md` when there are conflicts.
    - `.claude/settings.json` is merged: permission rules are combined, and only this tool's own hook entries are added or replaced. `npm run` rules are rewritten for your package manager and dropped for scripts you don't have.
    - `.mcp.json` gains only the servers you don't already have, whether in the project or in your own Claude Code config (user or local scope). Existing entries are never edited. If you have a Studio license but no `shadcn-studio-mcp` server yet, it's added with `${SHADCN_STUDIO_API_KEY}`/`${SHADCN_STUDIO_EMAIL}` references, so no secret is committed. Export those two variables in your shell profile, because Claude Code reads them from the environment, not from `.env`. The first time Claude Code opens the project, it asks you to approve the servers in `.mcp.json`.
    - `components.json` is normalized for Tailwind v4: shadcn serves the v4 component sources — the generation with `data-slot` — only when `tailwind.config` is `""`. On a v4 project a path left in that field points at a file that usually doesn't exist, and it silently downgrades every `shadcn add` to the pre-v4 `forwardRef` sources, so the `data-slot` convention this template installs can never actually be met. Only that provably-dead case is cleared; if the file really is on disk the CLI warns and leaves it alone.
@@ -88,7 +89,7 @@ Nothing runs on install. `init` is an explicit command that asks a few questions
 
 Re-running is safe. `.claude/.claude-shadcn-manifest.json` records what was installed, so files you never touched are updated to the newer template and files you edited become conflicts.
 
-Flags: `--dry-run`, `--yes` (accepts the defaults; no AI step), `--studio` / `--no-studio`, `--figma` / `--no-figma`, `--no-ai`, `--cwd <dir>`. Run `npx claude-shadcn-cli --help` for details.
+Flags: `--dry-run`, `--yes` (accepts the defaults; no AI step), `--studio` / `--no-studio`, `--figma` / `--no-figma`, `--no-ai`, `--cwd <dir>`. Run `npx claude-shadcn-cli --help` for details — or `npx github:emersonr-dev/claude-shadcn-template --help` if you haven't added it as a dependency.
 
 ### Manual installation
 
