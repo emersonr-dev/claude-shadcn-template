@@ -1,6 +1,15 @@
+import { existsSync } from "node:fs"
 import { join } from "node:path"
 import { renderManagedMd, renderSkeleton, importBlock } from "./render.js"
-import { renderSettings, mergeSettings, mergeRegistries, ensureLines } from "./merge.js"
+import {
+  renderSettings,
+  mergeSettings,
+  mergeRegistries,
+  ensureLines,
+  majorVersion,
+  normalizeTailwindConfig,
+  hasTailwindConfigPath,
+} from "./merge.js"
 import { MCP_JSON, mergeMcpJson, personalServers } from "./mcp.js"
 import { PKG_ROOT, MANAGED_MD, MANIFEST, listFiles, readJson, readText, sha256, toJson } from "./util.js"
 
@@ -91,13 +100,37 @@ export function buildPlan(cwd, { studio, figma, detection, personal = personalSe
     actions.push(classifyMerged(cwd, settingsPath, settingsText, unchanged ? settingsText : merged, "add permissions/hooks"))
   }
 
-  // 5. Shadcn Studio registries + env placeholders.
-  if (studio) {
-    const { result, added, differing } = mergeRegistries(detection.componentsJson, JSON.parse(src("components.registries.snippet.json")))
+  // 5. components.json — the v4 source fix applies to every project; the Studio
+  // registries and the env placeholders only mean something with a license.
+  if (detection.componentsJson) {
     const before = readText(join(cwd, "components.json"))
-    actions.push(classifyMerged(cwd, "components.json", before, added.length ? toJson(result) : before, `add ${added.join(", ")} registries`))
-    for (const name of differing) warnings.push(`components.json already defines ${name} differently; left as-is.`)
+    let result = detection.componentsJson
+    const reasons = []
 
+    if (majorVersion(detection.tailwindVersion) >= 4 && hasTailwindConfigPath(result)) {
+      const configPath = result.tailwind.config
+      if (existsSync(join(cwd, configPath))) {
+        warnings.push(
+          `components.json points tailwind.config at ${configPath}, which exists — shadcn will keep installing the pre-v4 component sources (no \`data-slot\`). On Tailwind v4 the config belongs in CSS: delete that file and set tailwind.config to "".`
+        )
+      } else {
+        const normalized = normalizeTailwindConfig(result)
+        result = normalized.result
+        reasons.push(`clear dead tailwind.config (${normalized.previous}) so shadcn serves the v4 sources`)
+      }
+    }
+
+    if (studio) {
+      const { result: withRegistries, added, differing } = mergeRegistries(result, JSON.parse(src("components.registries.snippet.json")))
+      result = withRegistries
+      if (added.length) reasons.push(`add ${added.join(", ")} registries`)
+      for (const name of differing) warnings.push(`components.json already defines ${name} differently; left as-is.`)
+    }
+
+    actions.push(classifyMerged(cwd, "components.json", before, reasons.length ? toJson(result) : before, reasons.join("; ")))
+  }
+
+  if (studio) {
     const env = readText(join(cwd, ".env.example"))
     const envAfter = ensureLines(env, [
       { line: "EMAIL=", present: /^EMAIL=/m },

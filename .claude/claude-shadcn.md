@@ -20,7 +20,8 @@ This is a shadcn/ui-first project — these rules are strict, not stylistic pref
 - This project has no Shadcn Studio license: install and refresh components with the official `npx shadcn@latest add <name>` CLI only (see the `component` skill's "Plain shadcn/ui installs" note), and ignore the skill's Studio-specific steps.
 <!-- no-studio:end -->
 - `[CUSTOMIZE]` Named exports only (no `export default`) for new `components/ui/*` and `components/providers/*` components — or pick a different export convention and state it here; whatever is chosen, keep it consistent project-wide and call out any exceptions (e.g. page/route files following a framework's own convention).
-- Always define and export a `Props` interface/type; accept and merge `className` via `cn()` from `@/lib/utils`.
+- Always define and export a `Props` interface/type; accept and merge `className` via `cn()`.
+- **Import `cn` from the `cn` package — `import { cn } from "cn"`.** That is what the current shadcn registry ships and what `shadcn add` installs as a dependency, so it resolves out of `node_modules` and does not depend on a `lib/utils` file or a working path alias existing in this project. When `shadcn add` writes that import, leave it alone: rewriting it to `@/lib/utils` breaks on the next `--overwrite` and assumes a local re-export that newer shadcn projects never generate. Use `@/lib/utils` only in a project that predates the `cn` package and already re-exports `cn` there — and if so, say that here.
 - Add `data-slot="component-name"` on the root element.
 <!-- rsc:start -->
 - `[CUSTOMIZE — RSC frameworks only]` This project uses React Server Components: add `"use client"` only when the component needs hooks, event handlers, or browser APIs.
