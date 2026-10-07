@@ -21,7 +21,7 @@ This is a shadcn/ui-first project — these rules are strict, not stylistic pref
 <!-- no-studio:end -->
 - `[CUSTOMIZE]` Named exports only (no `export default`) for new `components/ui/*` and `components/providers/*` components — or pick a different export convention and state it here; whatever is chosen, keep it consistent project-wide and call out any exceptions (e.g. page/route files following a framework's own convention).
 - Always define and export a `Props` interface/type; accept and merge `className` via `cn()`.
-- **Import `cn` the way this project's installed components already do — open one and check before writing a new component.** Never assume a path alias resolves: `@/lib/utils` exists only if the project generated it, and newer shadcn projects never do. When `shadcn add` writes `import { cn } from "cn"`, leave that import alone — the CLI installs `cn` as a dependency, so it resolves from `node_modules`, and rewriting it to an alias is undone by the next `--overwrite`. Use `@/lib/utils` only where the project already re-exports `cn` there.
+- **Import `cn` from the `cn` npm package — `import { cn } from "cn"`.** That is the import shadcn/ui's own tools write: `npx shadcn@latest add` installs `cn` as a project dependency, so the import resolves from `node_modules`. Leave it exactly as the CLI wrote it — rewriting it is undone by the next `--overwrite`.
 - Add `data-slot="component-name"` on the root element.
 <!-- rsc:start -->
 - `[CUSTOMIZE — RSC frameworks only]` This project uses React Server Components: add `"use client"` only when the component needs hooks, event handlers, or browser APIs.

@@ -292,10 +292,10 @@ test("components.json: Tailwind v3 projects and already-empty configs are left a
   assert.equal(kinds(planFor(already, false))["components.json"], "unchanged")
 })
 
-test("conventions: the cn rule leads with checking and never assumes a path alias", () => {
+test("conventions: cn is imported from the cn npm package, as shadcn's own tools write it", () => {
   const managed = readFileSync(join(PKG_ROOT, ".claude/claude-shadcn.md"), "utf8")
   assert.match(managed, /import \{ cn \} from "cn"/)
-  assert.match(managed, /Never assume a path alias resolves/)
+  assert.match(managed, /resolves from `node_modules`/)
   const skill = readFileSync(join(PKG_ROOT, ".claude/skills/component/SKILL.md"), "utf8")
   assert.ok(!skill.includes('import { cn } from "@/lib/utils"'), "skill examples must not import cn from @/lib/utils")
   assert.match(skill, /import \{ cn \} from "cn"/)
