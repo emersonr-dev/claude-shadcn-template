@@ -230,6 +230,51 @@ test("plan: a Studio project without Figma gets no Figma instructions anywhere",
   assert.match(read(dir, ".claude/skills/component/SKILL.md"), /`\/cui`/)
 })
 
+test("plan: turning a flag off removes the files it installed, and stops tracking them", () => {
+  const dir = project(nextApp())
+  run(dir, true, true)
+  assert.ok(existsSync(join(dir, ".claude/commands/ftc.md")))
+
+  const { plan } = run(dir, true, false)
+  assert.equal(kinds(plan)[".claude/commands/ftc.md"], "remove")
+  assert.ok(!existsSync(join(dir, ".claude/commands/ftc.md")))
+  assert.ok(!existsSync(join(dir, ".claude/skills/component/references/figma-to-shadcn-mapping.md")))
+
+  const manifest = JSON.parse(read(dir, ".claude/.claude-shadcn-manifest.json"))
+  assert.equal(manifest.files[".claude/commands/ftc.md"], undefined, "a removed file must leave the manifest")
+  assert.equal(manifest.figma, false)
+  // the Studio commands are still there, so the directory stays
+  assert.ok(existsSync(join(dir, ".claude/commands/cui.md")))
+
+  // and the removal is not re-proposed on the next run
+  assert.deepEqual(planFor(dir, true, false).actions.filter((a) => a.kind !== "unchanged"), [])
+})
+
+test("plan: dropping the license removes the commands and the directory they lived in", () => {
+  const dir = project(nextApp())
+  run(dir, true, true)
+  run(dir, false, false)
+  assert.ok(!existsSync(join(dir, ".claude/commands")), "an emptied directory should not be left behind")
+  assert.ok(!existsSync(join(dir, ".claude/hooks")))
+  assert.ok(existsSync(join(dir, ".claude/skills/component/SKILL.md")), "the skill is not Studio-gated")
+  assert.match(read(dir, ".claude/claude-shadcn.md"), /no Shadcn Studio license/)
+})
+
+test("plan: a file we no longer manage but the user edited is kept, with a warning", () => {
+  const dir = project(nextApp())
+  run(dir, true, true)
+  writeFileSync(join(dir, ".claude/commands/ftc.md"), "my own notes\n")
+
+  const plan = planFor(dir, true, false)
+  assert.equal(kinds(plan)[".claude/commands/ftc.md"], undefined, "must not be scheduled for deletion")
+  assert.match(plan.warnings.join("\n"), /ftc\.md is no longer part of this setup/)
+
+  applyPlan(dir, plan)
+  assert.equal(read(dir, ".claude/commands/ftc.md"), "my own notes\n")
+  const manifest = JSON.parse(read(dir, ".claude/.claude-shadcn-manifest.json"))
+  assert.equal(manifest.files[".claude/commands/ftc.md"], undefined)
+})
+
 test("plan: existing CLAUDE.md only gains the import line, once", () => {
   const dir = project({ ...nextApp(), "CLAUDE.md": "# My project\n\nOur rules.\n" })
   run(dir, true)

@@ -75,6 +75,23 @@ export function buildPlan(cwd, { studio, figma, detection, personal = personalSe
   const managed = renderManagedMd(src(MANAGED_MD), { ...detection, studio, figma })
   actions.push(classifyOwned(cwd, manifest, MANAGED_MD, managed))
 
+  // 2b. Files an earlier run installed that this one no longer manages — a flag
+  //     flipped off, or the template stopped shipping them. Nothing used to
+  //     collect these: they stayed on disk, still listed in the manifest, so no
+  //     later run would update or remove them. A `--no-figma` re-run left the
+  //     project with an ftc.md frozen at whatever version first installed it.
+  const managedNow = new Set(actions.map((a) => a.path))
+  for (const [path, hash] of Object.entries(manifest.files)) {
+    if (managedNow.has(path)) continue
+    const current = readText(join(cwd, path))
+    if (current === undefined) continue // already gone; applyPlan drops the manifest entry
+    if (sha256(current) !== hash) {
+      warnings.push(`${path} is no longer part of this setup, but you've edited it since it was installed, so it was left alone. Delete it yourself if you don't want it.`)
+      continue
+    }
+    actions.push({ path, kind: "remove", reason: "no longer part of this setup" })
+  }
+
   // 3. CLAUDE.md — create the skeleton, or add a single @import line to the user's own.
   const claudeMdPath = detection.claudeMdPath ?? "CLAUDE.md"
   const importPath = claudeMdPath === "CLAUDE.md" ? MANAGED_MD : "claude-shadcn.md"
