@@ -9,7 +9,7 @@ This project uses the `shadcn-studio-mcp` server for four workflows, each with a
 | `/cui` | Create UI — new block/page section | `get-create-instructions` |
 | `/rui` | Refine UI — edit an existing component/block | `get-refine-instructions` |
 | `/iui` | Inspiration UI — design guided by existing blocks, nothing installed | `get-inspire-instructions` |
-| `/ftc` | Figma to Code | `get-ftc-instructions` (also needs Figma's MCP server, which `claude-shadcn-cli` adds to `.mcp.json`; Figma's current server calls `get_code` `get_design_context`) |
+| `/ftc` | Figma to Code | `get-ftc-instructions` (also needs Figma's MCP server, which `claude-shadcn-cli` adds to `.mcp.json`; Figma's current server has no `get_code` — use `get_design_context` wherever instructions say `get_code`) |
 
 ## Why the workflow order matters
 
