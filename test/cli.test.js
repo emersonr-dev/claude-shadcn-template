@@ -207,6 +207,30 @@ test("gitignore: a blanket .env* does not swallow the .env.example we write", ()
   assert.doesNotMatch(read(noStudio, ".gitignore"), /!\.env\.example/)
 })
 
+// Keeping .env.example out of git is a legitimate choice (placeholders in the
+// README, or a public repo). Re-adding the negation on every run reversed it,
+// and the only way to make the decision stick was to stop re-running init.
+test("gitignore: a negation the project removed is not added back", () => {
+  const dir = project({ ...nextApp(), ".gitignore": "node_modules\n.env*\n" })
+  run(dir, true)
+  assert.match(read(dir, ".gitignore"), /^!\.env\.example$/m)
+
+  // The project reverses it deliberately: drop the negation, keep the file untracked.
+  writeFileSync(join(dir, ".gitignore"), "node_modules\n.env*\n")
+  run(dir, true)
+  assert.doesNotMatch(read(dir, ".gitignore"), /!\.env\.example/)
+
+  // Still true on the run after that.
+  run(dir, true)
+  assert.doesNotMatch(read(dir, ".gitignore"), /!\.env\.example/)
+})
+
+test("gitignore: a project that has its own .env.example is never re-negated", () => {
+  const dir = project({ ...nextApp(), ".gitignore": "node_modules\n.env*\n", ".env.example": "EMAIL=\nLICENSE_KEY=\n" })
+  run(dir, true)
+  assert.doesNotMatch(read(dir, ".gitignore"), /!\.env\.example/)
+})
+
 test("plan: without a license or Figma, Studio and Figma files are skipped", () => {
   const dir = project(nextApp())
   run(dir, false)

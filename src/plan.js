@@ -150,13 +150,16 @@ export function buildPlan(cwd, { studio, figma, detection, personal = personalSe
     actions.push(classifyMerged(cwd, "components.json", before, reasons.length ? toJson(result) : before, reasons.join("; ")))
   }
 
+  let wroteEnvExample = false
   if (studio) {
     const env = readText(join(cwd, ".env.example"))
     const envAfter = ensureLines(env, [
       { line: "EMAIL=", present: /^EMAIL=/m },
       { line: "LICENSE_KEY=", present: /^LICENSE_KEY=/m },
     ])
-    actions.push(classifyMerged(cwd, ".env.example", env, envAfter, "add Shadcn Studio placeholders"))
+    const action = classifyMerged(cwd, ".env.example", env, envAfter, "add Shadcn Studio placeholders")
+    wroteEnvExample = action.kind === "create"
+    actions.push(action)
   }
 
   // 6. .mcp.json — project-scoped MCP servers, so teammates get them too.
@@ -184,7 +187,13 @@ export function buildPlan(cwd, { studio, figma, detection, personal = personalSe
   // .env.example written above — so the placeholders a teammate needs would never
   // reach the repo. Git resolves the last matching pattern, and ensureLines appends,
   // so the negation always lands after whatever ignores it.
-  if (studio) gitignoreEntries.push({ line: "!.env.example", present: /^!\/?\.env\.example$/m })
+  //
+  // Only when this run actually creates the file. Projects deliberately keep
+  // .env.example out of git (the placeholders are in their README, or the repo
+  // is public); re-adding the negation on every run quietly reverses that, and
+  // the only way to make it stick was to stop re-running init. If the file is
+  // already there, that decision has been made and isn't ours to revisit.
+  if (wroteEnvExample) gitignoreEntries.push({ line: "!.env.example", present: /^!\/?\.env\.example$/m })
   const gitignoreAfter = ensureLines(gitignore, gitignoreEntries)
   actions.push(classifyMerged(cwd, ".gitignore", gitignore, gitignoreAfter, "ignore .env and personal Claude settings"))
 
