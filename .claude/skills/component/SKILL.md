@@ -12,9 +12,14 @@ This file points at the canonical rules rather than copying them — read the so
 
 ## Canonical sources for this skill
 
-- `.claude/commands/cui.md`, `rui.md`, `iui.md`, `ftc.md` — one Claude Code command per shadcn/studio MCP workflow (`ftc.md` also has a Figma-only path for projects without a Studio license). Each calls the matching `mcp__shadcn-studio-mcp__get-*-instructions` tool live (rather than a copy baked into this file) and then applies the conventions below. If the user's request matches one of these workflows but they didn't type the slash command, invoke the same `get-*-instructions` tool directly instead of guessing at steps.
+- `.claude/commands/cui.md`, `rui.md`, `iui.md` — one Claude Code command per shadcn/studio MCP workflow. Each calls the matching `mcp__shadcn-studio-mcp__get-*-instructions` tool live (rather than a copy baked into this file) and then applies the conventions below. If the user's request matches one of these workflows but they didn't type the slash command, invoke the same `get-*-instructions` tool directly instead of guessing at steps.
+<!-- figma:start -->
+- `.claude/commands/ftc.md` — the Figma-to-code command, under the same contract: it calls `get-ftc-instructions` live when this project has a Studio license, and otherwise takes a Figma-only path onto stock shadcn/ui.
+<!-- figma:end -->
 - `.claude/skills/component/references/shadcn-studio-workflow.md` — why the workflows are structured as "collect everything, then install in one batch," the existing-component-vs-fetched-candidate comparison gate, and which command maps to which MCP instructions tool.
+<!-- figma:start -->
 - `.claude/skills/component/references/figma-to-shadcn-mapping.md` — Figma element → shadcn/ui component mapping table, used by `/ftc` when converting raw Figma markup.
+<!-- figma:end -->
 - `.claude/claude-shadcn.md` § "Component conventions" — the enforced conventions (named exports or whatever this project chose, `Props` type, `data-slot`, `cn()`, path aliases, no hardcoded colors, placement rules). Apply these to every component this skill produces; don't restate them here, they change independently of this skill.
 
 ## Which workflow to use
@@ -24,11 +29,13 @@ This file points at the canonical rules rather than copying them — read the so
 | Building a new block/page section | `/cui` | `get-create-instructions` |
 | Editing/updating an existing component or block | `/rui` | `get-refine-instructions` |
 | Want design inspiration, nothing installed | `/iui` | `get-inspire-instructions` |
+<!-- figma:start -->
 | Converting a Figma design to code | `/ftc` | `get-ftc-instructions` with a Studio license; Figma MCP + stock shadcn/ui without one (see `ftc.md`) |
+<!-- figma:end -->
 
 Don't hand-roll a distilled version of the tool sequence here — call the relevant `get-*-instructions` tool and follow what it returns; it's the vendor's source of truth and can change independently of this repo.
 
-**Not every component touch needs the Studio workflow.** These four commands wrap ThemeSelection's paid Shadcn Studio marketplace (curated Pro blocks/themes), not the plain shadcn/ui registry. If the request is just installing or updating a stock shadcn/ui primitive with no Pro variant involved, skip straight to `npx shadcn@latest add <name>` (`--overwrite` to refresh to the latest official source) instead of running a Studio workflow for it — see `references/shadcn-studio-workflow.md` § "Plain shadcn/ui installs — skip the Studio workflow". If this project has no Shadcn Studio license at all, delete the four commands, this skill's Studio-specific sections, and `components.json`'s `@ss-*` registries, and treat `npx shadcn@latest add` as the only install path.
+**Not every component touch needs the Studio workflow.** The commands above wrap ThemeSelection's paid Shadcn Studio marketplace (curated Pro blocks/themes), not the plain shadcn/ui registry. If the request is just installing or updating a stock shadcn/ui primitive with no Pro variant involved, skip straight to `npx shadcn@latest add <name>` (`--overwrite` to refresh to the latest official source) instead of running a Studio workflow for it — see `references/shadcn-studio-workflow.md` § "Plain shadcn/ui installs — skip the Studio workflow". If this project has no Shadcn Studio license at all, delete those commands, this skill's Studio-specific sections, and `components.json`'s `@ss-*` registries, and treat `npx shadcn@latest add` as the only install path.
 
 ## Reference templates
 
@@ -157,6 +164,11 @@ export type { MyComponentProps }
 ## Checklist before finalizing
 
 - [ ] MCP workflow ran to completion (no steps skipped, no premature installs) — or the plain `npx shadcn@latest add` path was used instead, when appropriate
+<!-- figma:start -->
 - [ ] Component hierarchy followed (existing → install → extend → never pure Tailwind — see `references/figma-to-shadcn-mapping.md` for the Figma-conversion case)
+<!-- figma:end -->
+<!-- no-figma:start -->
+- [ ] Component hierarchy followed (existing → install → extend → never pure Tailwind)
+<!-- no-figma:end -->
 - [ ] Conventions from `.claude/claude-shadcn.md` § "Component conventions" applied (exports, `Props` type, `data-slot`, `cn()`, path aliases, no hardcoded colors, placement)
 - [ ] Re-checked against current `CLAUDE.md` / `references/*` before relying on this file — it's a pointer, not a guaranteed-current copy

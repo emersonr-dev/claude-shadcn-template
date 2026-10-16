@@ -43,9 +43,22 @@ export function refreshCommand(installedAsDependency) {
   return installedAsDependency ? BIN_INVOCATION : REPO_INVOCATION
 }
 
+/**
+ * Renders a copied markdown file (the commands and the `component` skill) for a project.
+ *
+ * These files carry no `[CUSTOMIZE]` markers — they're reference docs, not a
+ * conventions file the project fills in — but they do describe workflows that
+ * only some projects get, so they need the same region handling. Without it a
+ * `--no-figma` project is handed a skill that documents `/ftc` and points at a
+ * mapping reference neither of which it has.
+ */
+export function renderCopiedMd(source, { studio, figma, rsc }) {
+  return tidy(applyRegions(source, { studio, "no-studio": !studio, figma, "no-figma": !figma, rsc }))
+}
+
 /** Renders `.claude/claude-shadcn.md` for a project. */
 export function renderManagedMd(source, { studio, figma, rsc, cssFile, installedAsDependency }) {
-  let text = applyRegions(source, { studio, "no-studio": !studio, figma, rsc })
+  let text = applyRegions(source, { studio, "no-studio": !studio, figma, "no-figma": !figma, rsc })
   text = replaceExact(text, MANUAL_HINT, "")
   text = replaceExact(
     text,

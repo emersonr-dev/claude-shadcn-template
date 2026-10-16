@@ -6,7 +6,7 @@ import { dirname, join } from "node:path"
 import { detectProject } from "../src/detect.js"
 import { buildPlan } from "../src/plan.js"
 import { applyPlan } from "../src/apply.js"
-import { renderManagedMd, renderSkeleton, refreshCommand, MANUAL_HINT, EXPORT_MARKER, RSC_MARKER, CSS_MARKER, REFRESH_MARKER } from "../src/render.js"
+import { renderCopiedMd, renderManagedMd, renderSkeleton, refreshCommand, MANUAL_HINT, EXPORT_MARKER, RSC_MARKER, CSS_MARKER, REFRESH_MARKER } from "../src/render.js"
 import { mergeSettings, renderSettings } from "../src/merge.js"
 import { mergeMcpJson, personalServers, FIGMA_SERVER } from "../src/mcp.js"
 import { PKG_ROOT, INCOMING_DIR, sha256 } from "../src/util.js"
@@ -61,11 +61,6 @@ test("render: every marker the CLI replaces exists in the template", () => {
   for (const marker of [MANUAL_HINT, EXPORT_MARKER, RSC_MARKER, CSS_MARKER, REFRESH_MARKER]) assert.ok(source.includes(marker), marker)
 })
 
-test("render: the managed file's HTML comments never nest (a nested --> leaks text into Claude's context)", () => {
-  const source = readFileSync(join(PKG_ROOT, ".claude/claude-shadcn.md"), "utf8")
-  for (const comment of source.match(/<!--[\s\S]*?-->/g)) assert.ok(!comment.slice(4).includes("<!--"), comment)
-})
-
 test("render: managed file resolves markers and regions", () => {
   const source = readFileSync(join(PKG_ROOT, ".claude/claude-shadcn.md"), "utf8")
   const studioRsc = renderManagedMd(source, { studio: true, figma: true, rsc: true, cssFile: "app/globals.css" })
@@ -82,6 +77,50 @@ test("render: managed file resolves markers and regions", () => {
   const figmaOnly = renderManagedMd(source, { studio: false, figma: true, rsc: false, cssFile: "src/index.css" })
   assert.match(figmaOnly, /`\/ftc/)
   assert.doesNotMatch(figmaOnly, /\/cui|EMAIL/)
+})
+
+// The copied markdown (the commands and the skill) used to ship byte-for-byte,
+// so a --no-figma project was handed a skill documenting /ftc and pointing at a
+// mapping reference, neither of which it had.
+const COPIED_MD = [
+  ".claude/skills/component/SKILL.md",
+  ".claude/skills/component/references/shadcn-studio-workflow.md",
+]
+
+test("render: copied markdown drops the workflows a project didn't get", () => {
+  for (const path of COPIED_MD) {
+    const source = readFileSync(join(PKG_ROOT, path), "utf8")
+
+    const withFigma = renderCopiedMd(source, { studio: true, figma: true, rsc: true })
+    assert.match(withFigma, /\/ftc/, path)
+
+    const without = renderCopiedMd(source, { studio: true, figma: false, rsc: true })
+    assert.doesNotMatch(without, /\/ftc|ftc\.md|figma-to-shadcn-mapping/, path)
+    assert.match(without, /`\/cui`/, path)
+  }
+})
+
+test("render: no region marker survives into an installed file", () => {
+  for (const path of [...COPIED_MD, ".claude/claude-shadcn.md"]) {
+    const source = readFileSync(join(PKG_ROOT, path), "utf8")
+    for (const figma of [true, false]) {
+      const rendered =
+        path === ".claude/claude-shadcn.md"
+          ? renderManagedMd(source, { studio: true, figma, rsc: true, cssFile: "app/globals.css" })
+          : renderCopiedMd(source, { studio: true, figma, rsc: true })
+      assert.doesNotMatch(rendered, /:start -->|:end -->/, `${path} (figma: ${figma})`)
+    }
+  }
+})
+
+// A nested `-->` ends the outer comment early and leaks the rest as visible text.
+test("render: HTML comments never nest in any file carrying regions", () => {
+  for (const path of [...COPIED_MD, ".claude/claude-shadcn.md"]) {
+    const source = readFileSync(join(PKG_ROOT, path), "utf8")
+    for (const comment of source.match(/<!--[\s\S]*?-->/g) ?? []) {
+      assert.ok(!comment.slice(4).includes("<!--"), `${path}: ${comment}`)
+    }
+  }
 })
 
 test("render: skeleton drops the template note but keeps the import", () => {
@@ -177,6 +216,18 @@ test("plan: without a license or Figma, Studio and Figma files are skipped", () 
   assert.ok(!existsSync(join(dir, ".claude/hooks")))
   assert.ok(existsSync(join(dir, ".claude/skills/component/SKILL.md")))
   assert.equal(JSON.parse(read(dir, "components.json")).registries, undefined)
+})
+
+test("plan: a Studio project without Figma gets no Figma instructions anywhere", () => {
+  const dir = project(nextApp())
+  run(dir, true, false)
+  assert.ok(!existsSync(join(dir, ".claude/commands/ftc.md")))
+  assert.ok(!existsSync(join(dir, ".claude/skills/component/references/figma-to-shadcn-mapping.md")))
+  for (const path of [".claude/skills/component/SKILL.md", ".claude/skills/component/references/shadcn-studio-workflow.md", ".claude/claude-shadcn.md"]) {
+    assert.doesNotMatch(read(dir, path), /\/ftc|ftc\.md|figma-to-shadcn-mapping/, path)
+  }
+  // …and the Studio workflows it does have are still documented.
+  assert.match(read(dir, ".claude/skills/component/SKILL.md"), /`\/cui`/)
 })
 
 test("plan: existing CLAUDE.md only gains the import line, once", () => {

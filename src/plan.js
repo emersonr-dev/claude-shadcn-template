@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs"
 import { join } from "node:path"
-import { renderManagedMd, renderSkeleton, importBlock, refreshCommand } from "./render.js"
+import { renderCopiedMd, renderManagedMd, renderSkeleton, importBlock, refreshCommand } from "./render.js"
 import {
   renderSettings,
   mergeSettings,
@@ -62,10 +62,13 @@ export function buildPlan(cwd, { studio, figma, detection, personal = personalSe
   const warnings = []
   const src = (path) => readText(join(PKG_ROOT, path))
 
-  // 1. Commands, hooks, skills — copied as-is.
+  // 1. Commands, hooks, skills. Markdown goes through the region renderer so a
+  //    file that survives a flag still describes only the workflows this project
+  //    got; the hook script is copied byte-for-byte.
   for (const path of COPIED_DIRS.flatMap((dir) => listFiles(PKG_ROOT, dir)).filter((p) => included(p, { studio, figma }))) {
     const mode = path.endsWith(".sh") ? 0o755 : undefined
-    actions.push(classifyOwned(cwd, manifest, path, src(path), mode))
+    const content = path.endsWith(".md") ? renderCopiedMd(src(path), { ...detection, studio, figma }) : src(path)
+    actions.push(classifyOwned(cwd, manifest, path, content, mode))
   }
 
   // 2. The managed conventions file CLAUDE.md imports.
