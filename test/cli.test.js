@@ -343,13 +343,37 @@ test("plan: Figma without a license installs /ftc only, for the fallback path", 
 
 test("mcp: never duplicates or edits servers the project or the user already has", () => {
   const theirs = { mcpServers: { design: { type: "http", url: "https://mcp.figma.com/mcp" }, db: { command: "x" } } }
-  const { result, added } = mergeMcpJson(theirs, { figma: true, studio: true, personal: { "shadcn-studio-mcp": { command: "npx" } } })
+  const { result, added, personalOnly } = mergeMcpJson(theirs, { figma: true, studio: true, personal: { "shadcn-studio-mcp": { command: "npx" } } })
   assert.deepEqual(added, [])
   assert.deepEqual(result, theirs)
+  // figma is in the project file under another name, so it's shared already;
+  // only the Studio server is missing from what teammates get.
+  assert.deepEqual(personalOnly, ["shadcn-studio-mcp"])
 
   const dir = project({ ...nextApp(), ".mcp.json": { mcpServers: { db: { command: "x" } } } })
   run(dir, true, true)
   assert.deepEqual(Object.keys(JSON.parse(read(dir, ".mcp.json")).mcpServers), ["db", "figma", "shadcn-studio-mcp"])
+})
+
+// A server in your own ~/.claude.json works on your machine and is invisible to
+// everyone else. Skipping it keeps your config from being copied into a shared
+// file without asking, but silence makes the gap look deliberate — so say so.
+test("mcp: warns when a server this project needs exists only in your personal config", () => {
+  const dir = project(nextApp())
+  const plan = planFor(dir, true, false, { "shadcn-studio-mcp": { command: "npx" } })
+  assert.match(plan.warnings.join("\n"), /shadcn-studio-mcp is configured in your personal Claude Code config/)
+  assert.match(plan.warnings.join("\n"), /a fresh clone of this project won't have it/)
+
+  applyPlan(dir, plan)
+  assert.ok(!existsSync(join(dir, ".mcp.json")), "we still don't write their personal setup into a shared file")
+})
+
+test("mcp: no warning once the project declares the server itself", () => {
+  const shared = { mcpServers: { "shadcn-studio-mcp": { command: "npx", args: ["-y", "shadcn-studio-mcp"] } } }
+  const dir = project({ ...nextApp(), ".mcp.json": shared })
+  const plan = planFor(dir, true, false, { "shadcn-studio-mcp": { command: "npx" } })
+  assert.doesNotMatch(plan.warnings.join("\n"), /personal Claude Code config/)
+  assert.equal(kinds(plan)[".mcp.json"], "unchanged")
 })
 
 test("mcp: reads user- and local-scope servers from ~/.claude.json", () => {

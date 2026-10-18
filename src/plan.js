@@ -172,7 +172,10 @@ export function buildPlan(cwd, { studio, figma, detection, personal = personalSe
       warnings.push(`${MCP_JSON} is not valid JSON; left as-is. Add the Figma server yourself: claude mcp add --scope project --transport http figma https://mcp.figma.com/mcp`)
     }
     if (mcpText === undefined || existingMcp) {
-      const { result, added } = mergeMcpJson(existingMcp, { figma, studio, personal })
+      const { result, added, personalOnly } = mergeMcpJson(existingMcp, { figma, studio, personal })
+      for (const name of personalOnly) {
+        warnings.push(`${name} is configured in your personal Claude Code config, so it was left out of ${MCP_JSON} — which means it isn't declared anywhere your teammates can see, and a fresh clone of this project won't have it. If the project should carry it, add it with \`claude mcp add --scope project\` or copy the entry into ${MCP_JSON} yourself.`)
+      }
       actions.push({ ...classifyMerged(cwd, MCP_JSON, mcpText, added.length ? toJson(result) : mcpText, `add ${added.join(", ")} MCP server`), servers: added })
     }
   }
