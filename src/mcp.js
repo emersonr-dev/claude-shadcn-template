@@ -36,20 +36,31 @@ export function personalServers(cwd, claudeJsonPath = join(homedir(), ".claude.j
 /**
  * Adds the servers this setup needs to the project's .mcp.json, skipping any the
  * project or the user already has (under any name). Never edits existing entries.
+ *
+ * Returns `personalOnly`: servers skipped *only* because this user has them in
+ * their own config. Those are the ones where the skip is invisible but not
+ * harmless — the project file is what teammates get, and a server nobody
+ * declared there is a server only this machine has. The caller warns; writing
+ * someone's personal setup into a shared, committed file isn't ours to decide.
  */
 export function mergeMcpJson(existing, { figma, studio, personal }) {
   const out = structuredClone(existing ?? {})
   out.mcpServers ??= {}
-  const has = (test) =>
-    [out.mcpServers, personal].some((servers) => Object.entries(servers ?? {}).some(([name, config]) => test(name, config)))
+  const hasIn = (servers, test) => Object.entries(servers ?? {}).some(([name, config]) => test(name, config))
   const added = []
-  if (figma && !has(isFigma)) {
-    out.mcpServers.figma = FIGMA_SERVER
-    added.push("figma")
+  const personalOnly = []
+  const wanted = [
+    [figma, isFigma, "figma", FIGMA_SERVER],
+    [studio, isStudio, "shadcn-studio-mcp", STUDIO_SERVER],
+  ]
+  for (const [want, test, name, config] of wanted) {
+    if (!want || hasIn(out.mcpServers, test)) continue
+    if (hasIn(personal, test)) {
+      personalOnly.push(name)
+      continue
+    }
+    out.mcpServers[name] = config
+    added.push(name)
   }
-  if (studio && !has(isStudio)) {
-    out.mcpServers["shadcn-studio-mcp"] = STUDIO_SERVER
-    added.push("shadcn-studio-mcp")
-  }
-  return { result: out, added }
+  return { result: out, added, personalOnly }
 }
