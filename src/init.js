@@ -6,11 +6,12 @@ import { applyPlan } from "./apply.js"
 import { hasClaudeCli, runClaude, fillClaudeMdPrompt, mergeConflictsPrompt } from "./agent.js"
 import { INCOMING_DIR } from "./util.js"
 
-const SYMBOLS = { create: "+", update: "↑", merge: "~", conflict: "!", unchanged: "=" }
+const SYMBOLS = { create: "+", update: "↑", merge: "~", remove: "−", conflict: "!", unchanged: "=" }
 const LABELS = {
   create: "new",
   update: "update",
   merge: "merge into existing",
+  remove: "delete",
   conflict: "conflict — saved for manual merge",
   unchanged: "already up to date",
 }

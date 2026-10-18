@@ -5,7 +5,12 @@
 <!-- studio:start -->
 ## Shadcn Studio credentials
 
+<!-- figma:start -->
 - `EMAIL` / `LICENSE_KEY` (in `.env`, gitignored) — Shadcn Studio registry auth, used by `components.json`'s `@ss-components`/`@ss-themes`/`@ss-blocks` registries. Required for the `/cui`, `/rui`, `/iui` commands below and for `/ftc`'s block installs.
+<!-- figma:end -->
+<!-- no-figma:start -->
+- `EMAIL` / `LICENSE_KEY` (in `.env`, gitignored) — Shadcn Studio registry auth, used by `components.json`'s `@ss-components`/`@ss-themes`/`@ss-blocks` registries. Required for the `/cui`, `/rui`, `/iui` commands below.
+<!-- no-figma:end -->
 <!-- studio:end -->
 
 ## Component conventions (see `.claude/skills/component` and its `references/`)

@@ -1,4 +1,4 @@
-import { chmodSync, mkdirSync, writeFileSync } from "node:fs"
+import { chmodSync, mkdirSync, rmdirSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { readManifest } from "./plan.js"
 import { refreshCommand } from "./render.js"
@@ -9,6 +9,22 @@ function write(cwd, path, content, mode) {
   mkdirSync(dirname(target), { recursive: true })
   writeFileSync(target, content)
   if (mode) chmodSync(target, mode)
+}
+
+/**
+ * Deletes a file we installed, then any directory the deletion emptied — so
+ * turning `studio` off leaves no bare `.claude/commands/` behind. rmdirSync
+ * fails on a non-empty directory, which is exactly the stop condition.
+ */
+function remove(cwd, path) {
+  rmSync(join(cwd, path), { force: true })
+  for (let dir = dirname(join(cwd, path)); dir.startsWith(cwd) && dir !== cwd; dir = dirname(dir)) {
+    try {
+      rmdirSync(dir)
+    } catch {
+      return
+    }
+  }
 }
 
 export function mergeChecklist(conflicts, command = refreshCommand(false)) {
@@ -33,14 +49,22 @@ export function applyPlan(cwd, plan) {
   const conflicts = plan.actions.filter((a) => a.kind === "conflict")
   for (const action of plan.actions) {
     if (["create", "update", "merge"].includes(action.kind)) write(cwd, action.path, action.content, action.mode)
+    if (action.kind === "remove") remove(cwd, action.path)
   }
   for (const action of conflicts) write(cwd, join(INCOMING_DIR, action.path), action.content)
   if (conflicts.length) write(cwd, join(INCOMING_DIR, "MERGE.md"), mergeChecklist(conflicts, plan.refreshCommand))
 
   // Remember what we installed, so the next run can tell untouched files (safe to update) from user edits.
   const manifest = readManifest(cwd)
+  // Stop tracking anything this plan no longer covers, so the manifest can't keep
+  // asserting a hash for a file we've removed or handed back to the user.
+  const planned = new Set(plan.actions.map((a) => a.path))
+  for (const path of Object.keys(manifest.files)) {
+    if (!planned.has(path)) delete manifest.files[path]
+  }
   for (const action of plan.actions) {
-    if (action.owned && action.kind !== "conflict") manifest.files[action.path] = sha256(action.content)
+    if (action.kind === "remove") delete manifest.files[action.path]
+    else if (action.owned && action.kind !== "conflict") manifest.files[action.path] = sha256(action.content)
   }
   const { version } = readJson(join(PKG_ROOT, "package.json"))
   write(cwd, MANIFEST, toJson({ version, studio: plan.studio, figma: plan.figma, files: manifest.files }))

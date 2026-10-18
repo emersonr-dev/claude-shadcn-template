@@ -1,21 +1,28 @@
 # shadcn/studio MCP server — workflow rules
 
+<!-- figma:start -->
 Reference doc for the `component` skill and the `/cui`, `/rui`, `/iui`, `/ftc` commands. Not invoked directly — read it via those.
+<!-- figma:end -->
+<!-- no-figma:start -->
+Reference doc for the `component` skill and the `/cui`, `/rui`, `/iui` commands. Not invoked directly — read it via those.
+<!-- no-figma:end -->
 
-This project uses the `shadcn-studio-mcp` server for four workflows, each with a matching Claude Code command:
+This project uses the `shadcn-studio-mcp` server for the workflows below, each with a matching Claude Code command:
 
 | Command | Workflow | Instructions tool |
 |---|---|---|
 | `/cui` | Create UI — new block/page section | `get-create-instructions` |
 | `/rui` | Refine UI — edit an existing component/block | `get-refine-instructions` |
 | `/iui` | Inspiration UI — design guided by existing blocks, nothing installed | `get-inspire-instructions` |
-| `/ftc` | Figma to Code | `get-ftc-instructions` (also needs Figma's MCP server, which `claude-shadcn-cli` adds to `.mcp.json`; Figma's current server calls `get_code` `get_design_context`) |
+<!-- figma:start -->
+| `/ftc` | Figma to Code | `get-ftc-instructions` (also needs Figma's MCP server, which `claude-shadcn-cli` adds to `.mcp.json`; Figma's current server has no `get_code` — use `get_design_context` wherever instructions say `get_code`) |
+<!-- figma:end -->
 
 ## Why the workflow order matters
 
-Each `get-*-instructions` tool returns the current step-by-step sequence for its workflow, fetched live rather than copied here, since the vendor updates it independently of this repo. The one rule that's consistent across all four and worth stating explicitly: **collect everything before installing anything**. Each workflow separates a collection phase (`get-block-meta-content` / `get-component-meta-content` → `collect_selected_blocks` / `collect_selected_components`) from a single batch install at the end (`get_add_command_for_items` / `get_add_command_for_components`). Installing mid-collection, or one item at a time, breaks the batching the tools are designed around — follow the fetched instructions' step order rather than shortcutting it.
+Each `get-*-instructions` tool returns the current step-by-step sequence for its workflow, fetched live rather than copied here, since the vendor updates it independently of this repo. The one rule that's consistent across all of them and worth stating explicitly: **collect everything before installing anything**. Each workflow separates a collection phase (`get-block-meta-content` / `get-component-meta-content` → `collect_selected_blocks` / `collect_selected_components`) from a single batch install at the end (`get_add_command_for_items` / `get_add_command_for_components`). Installing mid-collection, or one item at a time, breaks the batching the tools are designed around — follow the fetched instructions' step order rather than shortcutting it.
 
-Within one of these workflows, run the fetched steps through to completion rather than pausing after each tool call — that's what the workflow is for. Still stop and ask if the request is genuinely ambiguous (which block, which variant) or if a prerequisite is missing (e.g. `/ftc` without a Figma MCP configured).
+Within one of these workflows, run the fetched steps through to completion rather than pausing after each tool call — that's what the workflow is for. Still stop and ask if the request is genuinely ambiguous (which block, which variant) or if a prerequisite is missing (a Studio license, or a Figma MCP server when converting a Figma design).
 
 ## Project conventions on top
 
@@ -33,6 +40,6 @@ The component hierarchy rule ("prefer an existing `components/ui/*` component �
 
 ## Plain shadcn/ui installs — skip the Studio workflow
 
-`shadcn-studio-mcp` is ThemeSelection's Shadcn Studio: a paid Pro Blocks/components/themes marketplace layered on top of the official shadcn/ui registry system (`components.json`'s `@ss-components`/`@ss-themes`/`@ss-blocks` registries, gated by `EMAIL`/`LICENSE_KEY`). The four workflows above exist because Studio's *paid* content — curated blocks, "refine to a newer Studio variant," Figma-to-Pro-block conversion, inspiration browsing — has no official shadcn/ui equivalent. They are not a replacement for the plain shadcn/ui CLI.
+`shadcn-studio-mcp` is ThemeSelection's Shadcn Studio: a paid Pro Blocks/components/themes marketplace layered on top of the official shadcn/ui registry system (`components.json`'s `@ss-components`/`@ss-themes`/`@ss-blocks` registries, gated by `EMAIL`/`LICENSE_KEY`). The workflows above exist because Studio's *paid* content — curated blocks, "refine to a newer Studio variant," inspiration browsing, Figma-to-Pro-block conversion — has no official shadcn/ui equivalent. They are not a replacement for the plain shadcn/ui CLI.
 
 When the target is a **stock shadcn/ui primitive with no Pro variant involved** — installing a component that's just in the standard shadcn/ui registry (e.g. `button`, `dialog`, `tabs`), or updating one to its latest official upstream source — skip the Studio MCP tool sequence entirely and use the official CLI directly: `npx shadcn@latest add <name>` (add `--overwrite` to refresh an already-installed component to its current official source). Reach for the Studio workflows only when the request specifically needs Studio's curated blocks/themes, a "refine to newer Studio variant" pass, Figma-to-code, or inspiration browsing — not as the default path for every component touch.

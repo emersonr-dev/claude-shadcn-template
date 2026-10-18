@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs"
 import { join } from "node:path"
-import { renderManagedMd, renderSkeleton, importBlock, refreshCommand } from "./render.js"
+import { renderCopiedMd, renderManagedMd, renderSkeleton, importBlock, refreshCommand } from "./render.js"
 import {
   renderSettings,
   mergeSettings,
@@ -62,15 +62,35 @@ export function buildPlan(cwd, { studio, figma, detection, personal = personalSe
   const warnings = []
   const src = (path) => readText(join(PKG_ROOT, path))
 
-  // 1. Commands, hooks, skills — copied as-is.
+  // 1. Commands, hooks, skills. Markdown goes through the region renderer so a
+  //    file that survives a flag still describes only the workflows this project
+  //    got; the hook script is copied byte-for-byte.
   for (const path of COPIED_DIRS.flatMap((dir) => listFiles(PKG_ROOT, dir)).filter((p) => included(p, { studio, figma }))) {
     const mode = path.endsWith(".sh") ? 0o755 : undefined
-    actions.push(classifyOwned(cwd, manifest, path, src(path), mode))
+    const content = path.endsWith(".md") ? renderCopiedMd(src(path), { ...detection, studio, figma }) : src(path)
+    actions.push(classifyOwned(cwd, manifest, path, content, mode))
   }
 
   // 2. The managed conventions file CLAUDE.md imports.
   const managed = renderManagedMd(src(MANAGED_MD), { ...detection, studio, figma })
   actions.push(classifyOwned(cwd, manifest, MANAGED_MD, managed))
+
+  // 2b. Files an earlier run installed that this one no longer manages — a flag
+  //     flipped off, or the template stopped shipping them. Nothing used to
+  //     collect these: they stayed on disk, still listed in the manifest, so no
+  //     later run would update or remove them. A `--no-figma` re-run left the
+  //     project with an ftc.md frozen at whatever version first installed it.
+  const managedNow = new Set(actions.map((a) => a.path))
+  for (const [path, hash] of Object.entries(manifest.files)) {
+    if (managedNow.has(path)) continue
+    const current = readText(join(cwd, path))
+    if (current === undefined) continue // already gone; applyPlan drops the manifest entry
+    if (sha256(current) !== hash) {
+      warnings.push(`${path} is no longer part of this setup, but you've edited it since it was installed, so it was left alone. Delete it yourself if you don't want it.`)
+      continue
+    }
+    actions.push({ path, kind: "remove", reason: "no longer part of this setup" })
+  }
 
   // 3. CLAUDE.md — create the skeleton, or add a single @import line to the user's own.
   const claudeMdPath = detection.claudeMdPath ?? "CLAUDE.md"
@@ -130,13 +150,16 @@ export function buildPlan(cwd, { studio, figma, detection, personal = personalSe
     actions.push(classifyMerged(cwd, "components.json", before, reasons.length ? toJson(result) : before, reasons.join("; ")))
   }
 
+  let wroteEnvExample = false
   if (studio) {
     const env = readText(join(cwd, ".env.example"))
     const envAfter = ensureLines(env, [
       { line: "EMAIL=", present: /^EMAIL=/m },
       { line: "LICENSE_KEY=", present: /^LICENSE_KEY=/m },
     ])
-    actions.push(classifyMerged(cwd, ".env.example", env, envAfter, "add Shadcn Studio placeholders"))
+    const action = classifyMerged(cwd, ".env.example", env, envAfter, "add Shadcn Studio placeholders")
+    wroteEnvExample = action.kind === "create"
+    actions.push(action)
   }
 
   // 6. .mcp.json — project-scoped MCP servers, so teammates get them too.
@@ -164,7 +187,13 @@ export function buildPlan(cwd, { studio, figma, detection, personal = personalSe
   // .env.example written above — so the placeholders a teammate needs would never
   // reach the repo. Git resolves the last matching pattern, and ensureLines appends,
   // so the negation always lands after whatever ignores it.
-  if (studio) gitignoreEntries.push({ line: "!.env.example", present: /^!\/?\.env\.example$/m })
+  //
+  // Only when this run actually creates the file. Projects deliberately keep
+  // .env.example out of git (the placeholders are in their README, or the repo
+  // is public); re-adding the negation on every run quietly reverses that, and
+  // the only way to make it stick was to stop re-running init. If the file is
+  // already there, that decision has been made and isn't ours to revisit.
+  if (wroteEnvExample) gitignoreEntries.push({ line: "!.env.example", present: /^!\/?\.env\.example$/m })
   const gitignoreAfter = ensureLines(gitignore, gitignoreEntries)
   actions.push(classifyMerged(cwd, ".gitignore", gitignore, gitignoreAfter, "ignore .env and personal Claude settings"))
 
