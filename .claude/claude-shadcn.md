@@ -18,6 +18,7 @@
 This is a shadcn/ui-first project — these rules are strict, not stylistic preferences:
 
 - **Component hierarchy**: use an existing component in `components/ui/` → install a missing shadcn/ui component (`npx shadcn@latest add <name>`) → extend/compose shadcn/ui primitives → pure Tailwind `<div>`/`<button>` is forbidden when a shadcn/ui equivalent exists.
+- **Primitive library**: `[PRIMITIVE-BASE]` Never add a second primitive library beside it (no `@radix-ui/*` packages in a Base UI project) — that leaves the project with two implementations of the same component. `npx shadcn@latest add <name>` already resolves to the right one, since it reads `components.json`; a block or snippet that drags another base's packages in is a conflict to raise, not to merge.
 <!-- studio:start -->
 - Before writing or editing any UI component, consult the shadcn/studio MCP server (see `.claude/skills/component/SKILL.md` for the exact tool sequence) rather than hand-rolling from memory.
 <!-- studio:end -->

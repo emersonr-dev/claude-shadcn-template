@@ -23,6 +23,20 @@ const LOCKFILES = [
   ["package-lock.json", "npm"],
 ]
 
+// `components.json`'s `style` is what picks the low-level primitive library:
+// `radix-*`, `base-*` (Base UI) and `aria-*` (React Aria). The pre-flag styles
+// (`new-york`, `default`) predate multi-base support and are Radix.
+const BASE_STYLES = ["radix", "base", "aria"]
+const LEGACY_RADIX_STYLES = ["new-york", "default"]
+
+/** The primitive library a `style` selects ("radix" | "base" | "aria"), or undefined if unreadable. */
+export function primitiveBase(style) {
+  if (!style) return undefined
+  if (LEGACY_RADIX_STYLES.includes(style)) return "radix"
+  const [base] = style.split("-")
+  return BASE_STYLES.includes(base) ? base : undefined
+}
+
 function detectFramework(cwd, deps) {
   const match = FRAMEWORKS.find(([dep]) => deps[dep])
   if (!match) return "React (unrecognized setup)"
@@ -84,6 +98,7 @@ export function detectProject(cwd) {
     componentsJson,
     rsc: componentsJson?.rsc === true,
     cssFile: componentsJson?.tailwind?.css || undefined,
+    base: primitiveBase(componentsJson?.style),
     hasStudioRegistries: Boolean(componentsJson?.registries?.["@ss-components"]),
     claudeMdPath: ["CLAUDE.md", ".claude/CLAUDE.md"].find((p) => existsSync(join(cwd, p))),
     hasClaudeDir: existsSync(join(cwd, ".claude")),

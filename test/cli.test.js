@@ -3,10 +3,10 @@ import assert from "node:assert/strict"
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, existsSync, statSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
-import { detectProject } from "../src/detect.js"
+import { detectProject, primitiveBase } from "../src/detect.js"
 import { buildPlan } from "../src/plan.js"
 import { applyPlan } from "../src/apply.js"
-import { renderCopiedMd, renderManagedMd, renderSkeleton, refreshCommand, MANUAL_HINT, EXPORT_MARKER, RSC_MARKER, CSS_MARKER, REFRESH_MARKER } from "../src/render.js"
+import { renderCopiedMd, renderManagedMd, renderSkeleton, refreshCommand, MANUAL_HINT, EXPORT_MARKER, RSC_MARKER, CSS_MARKER, REFRESH_MARKER, BASE_MARKER } from "../src/render.js"
 import { mergeSettings, renderSettings } from "../src/merge.js"
 import { mergeMcpJson, personalServers, FIGMA_SERVER } from "../src/mcp.js"
 import { PKG_ROOT, INCOMING_DIR, sha256 } from "../src/util.js"
@@ -56,9 +56,24 @@ test("detect: reads framework, package manager, rsc and css from the project", (
   assert.equal(d.cssFile, "app/globals.css")
 })
 
+test("detect: reads the primitive library from components.json's style", () => {
+  assert.equal(primitiveBase("radix-nova"), "radix")
+  assert.equal(primitiveBase("base-vega"), "base")
+  assert.equal(primitiveBase("aria-rhea"), "aria")
+  // The styles that predate multi-base support are Radix.
+  assert.equal(primitiveBase("new-york"), "radix")
+  assert.equal(primitiveBase(undefined), undefined)
+  assert.equal(primitiveBase("mystery"), undefined)
+
+  const withStyle = { ...nextApp(), "components.json": { style: "base-nova", rsc: true, tailwind: { css: "app/globals.css" } } }
+  assert.equal(detectProject(project(withStyle)).base, "base")
+  // A components.json without a style still detects; the base is just unknown.
+  assert.equal(detectProject(project(nextApp())).base, undefined)
+})
+
 test("render: every marker the CLI replaces exists in the template", () => {
   const source = readFileSync(join(PKG_ROOT, ".claude/claude-shadcn.md"), "utf8")
-  for (const marker of [MANUAL_HINT, EXPORT_MARKER, RSC_MARKER, CSS_MARKER, REFRESH_MARKER]) assert.ok(source.includes(marker), marker)
+  for (const marker of [MANUAL_HINT, EXPORT_MARKER, RSC_MARKER, CSS_MARKER, REFRESH_MARKER, BASE_MARKER]) assert.ok(source.includes(marker), marker)
 })
 
 test("render: managed file resolves markers and regions", () => {
@@ -104,13 +119,48 @@ test("render: no region marker survives into an installed file", () => {
   for (const path of [...COPIED_MD, ".claude/claude-shadcn.md"]) {
     const source = readFileSync(join(PKG_ROOT, path), "utf8")
     for (const figma of [true, false]) {
-      const rendered =
-        path === ".claude/claude-shadcn.md"
-          ? renderManagedMd(source, { studio: true, figma, rsc: true, cssFile: "app/globals.css" })
-          : renderCopiedMd(source, { studio: true, figma, rsc: true })
-      assert.doesNotMatch(rendered, /:start -->|:end -->/, `${path} (figma: ${figma})`)
+      for (const base of [undefined, "radix", "base", "aria"]) {
+        const rendered =
+          path === ".claude/claude-shadcn.md"
+            ? renderManagedMd(source, { studio: true, figma, rsc: true, base, cssFile: "app/globals.css" })
+            : renderCopiedMd(source, { studio: true, figma, rsc: true, base })
+        assert.doesNotMatch(rendered, /:start -->|:end -->/, `${path} (figma: ${figma}, base: ${base})`)
+      }
     }
   }
+})
+
+// A wrapper template for the wrong primitive library is worse than none: it
+// compiles far enough to look right while naming parts that don't exist.
+test("render: the skill gets the wrapper template for this project's base only", () => {
+  const source = readFileSync(join(PKG_ROOT, ".claude/skills/component/SKILL.md"), "utf8")
+  const imports = { radix: /from "radix-ui"/, base: /@base-ui\/react/, aria: /react-aria-components/ }
+
+  for (const base of Object.keys(imports)) {
+    const rendered = renderCopiedMd(source, { studio: true, figma: true, rsc: true, base })
+    assert.match(rendered, imports[base], base)
+    for (const other of Object.keys(imports)) {
+      if (other !== base) assert.doesNotMatch(rendered, imports[other], `${base} leaked the ${other} template`)
+    }
+  }
+
+  // Unreadable style: all three, labelled, rather than one as if it were universal.
+  const unknown = renderCopiedMd(source, { studio: true, figma: true, rsc: true })
+  for (const pattern of Object.values(imports)) assert.match(unknown, pattern)
+
+  // The pattern the old Radix-only template taught, gone from every base.
+  for (const base of [undefined, "radix", "base", "aria"]) {
+    assert.doesNotMatch(renderCopiedMd(source, { studio: true, figma: true, rsc: true, base }), /React\.forwardRef<|ElementRef<typeof/, String(base))
+  }
+})
+
+test("render: the managed file names the project's primitive library", () => {
+  const source = readFileSync(join(PKG_ROOT, ".claude/claude-shadcn.md"), "utf8")
+  const base = { studio: true, figma: true, rsc: true, cssFile: "app/globals.css" }
+  assert.match(renderManagedMd(source, { ...base, base: "radix" }), /unified `radix-ui` package/)
+  assert.match(renderManagedMd(source, { ...base, base: "base" }), /\*\*Base UI\*\* primitives/)
+  assert.match(renderManagedMd(source, { ...base, base: "aria" }), /react-aria-components/)
+  assert.match(renderManagedMd(source, base), /`style` field names it/)
 })
 
 // A nested `-->` ends the outer comment early and leaks the rest as visible text.

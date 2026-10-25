@@ -16,6 +16,10 @@ const LABELS = {
   unchanged: "already up to date",
 }
 
+// components.json's `style` carries the primitive library (see detect.js); worth
+// showing, since it decides how a hand-written wrapper has to be written.
+const BASE_LABELS = { radix: "Radix UI", base: "Base UI", aria: "React Aria" }
+
 class Abort extends Error {}
 
 /** Asks a question, or returns `fallback` in --yes mode. Ctrl+C aborts cleanly. */
@@ -147,6 +151,7 @@ export async function init(cwd, opts) {
         `Framework:        ${detection.framework}`,
         `Package manager:  ${detection.packageManager}`,
         `RSC:              ${detection.rsc ? "yes" : "no"}`,
+        `Primitives:       ${BASE_LABELS[detection.base] ?? "not readable from components.json"}`,
         `Global CSS:       ${detection.cssFile ?? "not set in components.json"}`,
         `CLAUDE.md:        ${detection.claudeMdPath ?? "none — a skeleton will be created"}`,
       ].join("\n"),
