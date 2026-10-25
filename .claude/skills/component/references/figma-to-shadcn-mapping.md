@@ -44,9 +44,3 @@ Conversion process: identify what each element represents (card, button, badge, 
 | Site/page navigation | `NavigationMenu` |
 
 If nothing in `components/ui/` fits, install the missing shadcn/ui component (`npx shadcn@latest add <name>`) before writing custom markup — see the component hierarchy rule in `.claude/claude-shadcn.md`.
-
-## Component names are portable across bases; their parts are not
-
-This table maps a Figma element to a component *name*, which is the same whichever primitive library the project is on. The parts inside that component are not: a Radix or Base UI project exports `DialogContent` and `DialogPortal`, a React Aria one exports neither and wires the same structure through `Modal`/`ModalOverlay` and `slot` instead.
-
-So use this table to pick the component, then read that component's actual exports in `components/ui/` before composing its parts — never write sub-component names from memory. `.claude/claude-shadcn.md` § "Component conventions" names this project's base.
