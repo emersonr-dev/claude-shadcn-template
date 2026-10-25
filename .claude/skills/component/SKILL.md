@@ -20,6 +20,7 @@ This file points at the canonical rules rather than copying them — read the so
 <!-- figma:start -->
 - `.claude/skills/component/references/figma-to-shadcn-mapping.md` — Figma element → shadcn/ui component mapping table, used by `/ftc` when converting raw Figma markup.
 <!-- figma:end -->
+- **shadcn/ui's own tooling, for anything about the CLI, the registry or the primitive library.** `npx shadcn@latest info --json` reports this project's framework, base library, aliases and installed components — cheaper and more reliable than inferring any of it. shadcn also ships an official agent skill (`pnpm dlx skills add shadcn/ui`) covering the CLI, theming and registry authoring, plus the per-component base migration (`migrate accordion to base-ui`); prefer it over guessing at CLI behavior, and over this file for a migration.
 - `.claude/claude-shadcn.md` § "Component conventions" — the enforced conventions (named exports or whatever this project chose, `Props` type, `data-slot`, `cn()`, path aliases, no hardcoded colors, placement rules). Apply these to every component this skill produces; don't restate them here, they change independently of this skill.
 
 ## Which workflow to use
@@ -109,30 +110,106 @@ export { MyComponent, myComponentVariants }
 export type { MyComponentProps }
 ```
 
-### Radix UI primitive wrapper
+### Primitive wrapper
+
+shadcn/ui wraps one of three low-level primitive libraries, picked by `components.json`'s `style` at `init` time and fixed after that: `radix-*` (Radix UI), `base-*` ([Base UI](https://base-ui.com) — the default for new projects since July 2026) or `aria-*` (React Aria). Import path, props types and part names all differ between them, so **the ground truth is a sibling file**: open a component the CLI installed into `components/ui/` and match what it does. The template below is for this project's base.
+
+Two things hold on every base: components are plain functions — `ref` is an ordinary prop, so no `React.forwardRef`, no `React.ElementRef`, no `displayName` (upstream dropped all three with the React 19 / Tailwind v4 sources) — and every part carries its own `data-slot`.
+
+<!-- primitive-radix:start -->
+#### Radix UI (`radix-*` style)
 
 ```tsx
 "use client" // RSC frameworks only — omit on a plain client-rendered React app
 
 import * as React from "react"
-import * as SomePrimitive from "@radix-ui/react-some-primitive"
+import { Dialog as DialogPrimitive } from "radix-ui"
 import { cn } from "cn"
 
-const MyComponent = React.forwardRef<
-  React.ElementRef<typeof SomePrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof SomePrimitive.Root>
->(({ className, ...props }, ref) => (
-  <SomePrimitive.Root
-    ref={ref}
-    data-slot="my-component"
-    className={cn("/* base classes */", className)}
-    {...props}
-  />
-))
-MyComponent.displayName = "MyComponent"
+function DialogOverlay({
+  className,
+  ...props
+}: React.ComponentProps<typeof DialogPrimitive.Overlay>) {
+  return (
+    <DialogPrimitive.Overlay
+      data-slot="dialog-overlay"
+      className={cn("/* base classes */", className)}
+      {...props}
+    />
+  )
+}
 
-export { MyComponent }
+export { DialogOverlay }
 ```
+
+- Import from the unified `radix-ui` package, not the per-package `@radix-ui/react-*` modules the older sources used (`npx shadcn@latest migrate radix` moves an existing project across).
+- Props type: `React.ComponentProps<typeof DialogPrimitive.Part>`.
+- Compose with `asChild`.
+<!-- primitive-radix:end -->
+<!-- primitive-base:start -->
+#### Base UI (`base-*` style)
+
+```tsx
+"use client" // RSC frameworks only — omit on a plain client-rendered React app
+
+import * as React from "react"
+import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
+import { cn } from "cn"
+
+function DialogOverlay({ className, ...props }: DialogPrimitive.Backdrop.Props) {
+  return (
+    <DialogPrimitive.Backdrop
+      data-slot="dialog-overlay"
+      className={cn("/* base classes */", className)}
+      {...props}
+    />
+  )
+}
+
+export { DialogOverlay }
+```
+
+- Import per primitive: `@base-ui/react/<primitive>`.
+- Props types are namespaced on the part itself — `DialogPrimitive.Backdrop.Props`, not `React.ComponentProps<…>`.
+- Compose with the `render` prop; Base UI has no `asChild`.
+- Part names are not Radix's: `Backdrop` (Radix `Overlay`), `Popup` (Radix `Content`), plus `Positioner` on floating components. Don't assume a Radix part exists here.
+<!-- primitive-base:end -->
+<!-- primitive-aria:start -->
+#### React Aria (`aria-*` style)
+
+```tsx
+"use client" // RSC frameworks only — omit on a plain client-rendered React app
+
+import * as React from "react"
+import {
+  ModalOverlay as ModalOverlayPrimitive,
+  type ModalOverlayProps,
+} from "react-aria-components"
+import { cn } from "cn"
+
+function DialogOverlay({
+  className,
+  ...props
+}: Omit<ModalOverlayProps, "className"> & { className?: string }) {
+  return (
+    <ModalOverlayPrimitive
+      data-slot="dialog-overlay"
+      className={cn("/* base classes */", className)}
+      {...props}
+    />
+  )
+}
+
+export { DialogOverlay }
+```
+
+- Named components and their own `…Props` types, all from the single `react-aria-components` package.
+- Upstream types `className` (and some `children`) as a function of render state, which is why a wrapper re-types it as a plain string before handing it to `cn()`.
+- Compose with render props and `slot` wiring (`<Button slot="close">`) — there's no `asChild` or `render` prop.
+- The exported surface differs from the other bases (the React Aria dialog ships no `DialogContent`/`DialogPortal`), so read `components/ui/` before composing parts by name.
+<!-- primitive-aria:end -->
+
+If this project ever changes base (shadcn's own skill does it per component: `migrate accordion to base-ui`), re-run this template's installer so this file is regenerated for the new one.
 
 ### Client component (hooks / interactivity)
 
@@ -170,5 +247,6 @@ export type { MyComponentProps }
 <!-- no-figma:start -->
 - [ ] Component hierarchy followed (existing → install → extend → never pure Tailwind)
 <!-- no-figma:end -->
+- [ ] Any hand-written primitive wrapper matches this project's base library — right import path, part names and props types — and no second primitive library was introduced
 - [ ] Conventions from `.claude/claude-shadcn.md` § "Component conventions" applied (exports, `Props` type, `data-slot`, `cn()`, path aliases, no hardcoded colors, placement)
 - [ ] Re-checked against current `CLAUDE.md` / `references/*` before relying on this file — it's a pointer, not a guaranteed-current copy

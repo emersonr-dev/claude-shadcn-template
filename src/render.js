@@ -16,6 +16,28 @@ function replaceExact(text, from, to) {
 
 const tidy = (text) => text.replace(/\n{3,}/g, "\n\n")
 
+// Which primitive library a project is on decides how a wrapper around one is
+// written: the import path, the props types and the part names all differ
+// (Radix `Overlay`/`Content` vs. Base UI `Backdrop`/`Popup`, `asChild` vs.
+// `render`). So each project is shown only its own template — and a project
+// whose base can't be read from components.json is shown all of them, which is
+// still better than being handed one base's template as if it were universal.
+const BASES = ["radix", "base", "aria"]
+
+function baseRegions(base) {
+  const known = BASES.includes(base)
+  return Object.fromEntries(BASES.map((name) => [`primitive-${name}`, known ? name === base : true]))
+}
+
+const BASE_SENTENCES = {
+  radix: "This project's `components.json` uses a `radix-*` style, so `components/ui/*` wraps **Radix UI** primitives — import them from the unified `radix-ui` package, not the per-package `@radix-ui/react-*` modules the pre-2026 sources used.",
+  base: "This project's `components.json` uses a `base-*` style, so `components/ui/*` wraps **Base UI** primitives — import them from `@base-ui/react/<primitive>`, and compose with the `render` prop (Base UI has no `asChild`).",
+  aria: "This project's `components.json` uses an `aria-*` style, so `components/ui/*` wraps **React Aria** — import from `react-aria-components` and compose with its render props and `slot` wiring.",
+}
+
+const UNKNOWN_BASE_SENTENCE =
+  "Check which primitive library this project uses before hand-writing a wrapper around one — `components.json`'s `style` field names it (`radix-*` for Radix UI, `base-*` for Base UI, `aria-*` for React Aria), and `npx shadcn@latest info --json` reports it too."
+
 export const MANUAL_HINT =
   " Copying this file by hand instead? Fill in or delete each `[CUSTOMIZE]` marker and keep only the `name:start`/`name:end` region blocks that apply."
 export const EXPORT_MARKER =
@@ -23,6 +45,7 @@ export const EXPORT_MARKER =
 export const RSC_MARKER = "`[CUSTOMIZE — RSC frameworks only]` "
 export const CSS_MARKER = "`[CUSTOMIZE: e.g. app/globals.css for Next.js App Router, src/index.css for Vite]`"
 export const REFRESH_MARKER = "`[REFRESH-COMMAND]`"
+export const BASE_MARKER = "`[PRIMITIVE-BASE]`"
 
 const BIN_INVOCATION = "npx claude-shadcn-cli init"
 const REPO_INVOCATION = "npx github:emersonr-dev/claude-shadcn-template init"
@@ -52,13 +75,13 @@ export function refreshCommand(installedAsDependency) {
  * `--no-figma` project is handed a skill that documents `/ftc` and points at a
  * mapping reference neither of which it has.
  */
-export function renderCopiedMd(source, { studio, figma, rsc }) {
-  return tidy(applyRegions(source, { studio, "no-studio": !studio, figma, "no-figma": !figma, rsc }))
+export function renderCopiedMd(source, { studio, figma, rsc, base }) {
+  return tidy(applyRegions(source, { studio, "no-studio": !studio, figma, "no-figma": !figma, rsc, ...baseRegions(base) }))
 }
 
 /** Renders `.claude/claude-shadcn.md` for a project. */
-export function renderManagedMd(source, { studio, figma, rsc, cssFile, installedAsDependency }) {
-  let text = applyRegions(source, { studio, "no-studio": !studio, figma, "no-figma": !figma, rsc })
+export function renderManagedMd(source, { studio, figma, rsc, base, cssFile, installedAsDependency }) {
+  let text = applyRegions(source, { studio, "no-studio": !studio, figma, "no-figma": !figma, rsc, ...baseRegions(base) })
   text = replaceExact(text, MANUAL_HINT, "")
   text = replaceExact(
     text,
@@ -67,6 +90,7 @@ export function renderManagedMd(source, { studio, figma, rsc, cssFile, installed
   )
   if (rsc) text = replaceExact(text, RSC_MARKER, "")
   if (cssFile) text = replaceExact(text, CSS_MARKER, `\`${cssFile}\``)
+  text = replaceExact(text, BASE_MARKER, BASE_SENTENCES[base] ?? UNKNOWN_BASE_SENTENCE)
   text = replaceExact(text, REFRESH_MARKER, `\`${refreshCommand(installedAsDependency)}\``)
   return tidy(text)
 }
