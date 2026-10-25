@@ -34,6 +34,10 @@ This is a shadcn/ui-first project — these rules are strict, not stylistic pref
 <!-- rsc:end -->
 - Use path aliases (`@/components/*`, `@/lib/*`, `@/hooks/*`, etc.) rather than relative `../../` imports.
 - No hardcoded colors — use the CSS custom property tokens defined in `[CUSTOMIZE: e.g. app/globals.css for Next.js App Router, src/index.css for Vite]`.
+- `[ICON-LIBRARY]`
+<!-- rtl:start -->
+- This project is RTL-enabled (`rtl: true` in `components.json`): reach for direction-relative Tailwind utilities — `ms-`/`me-`, `ps-`/`pe-`, `start-`/`end-`, `text-start`/`text-end` — rather than `ml-`/`mr-`, `left-`/`right-`, `text-left`/`text-right`, and mirror directional icons (chevrons, arrows) instead of hardcoding one direction.
+<!-- rtl:end -->
 - Placement: reusable primitives → `components/ui/`; feature/page-specific → `components/`; Shadcn Studio blocks → `components/shadcn-studio/blocks/`; context/providers → `components/providers/`.
 
 <!-- studio:start -->

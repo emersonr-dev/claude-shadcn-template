@@ -99,6 +99,9 @@ export function detectProject(cwd) {
     rsc: componentsJson?.rsc === true,
     cssFile: componentsJson?.tailwind?.css || undefined,
     base: primitiveBase(componentsJson?.style),
+    // shadcn/ui defaults to lucide when the field is absent, so undefined is "lucide".
+    iconLibrary: componentsJson?.iconLibrary || undefined,
+    rtl: componentsJson?.rtl === true,
     hasStudioRegistries: Boolean(componentsJson?.registries?.["@ss-components"]),
     claudeMdPath: ["CLAUDE.md", ".claude/CLAUDE.md"].find((p) => existsSync(join(cwd, p))),
     hasClaudeDir: existsSync(join(cwd, ".claude")),
