@@ -6,7 +6,7 @@ import { dirname, join } from "node:path"
 import { detectProject, primitiveBase } from "../src/detect.js"
 import { buildPlan } from "../src/plan.js"
 import { applyPlan } from "../src/apply.js"
-import { renderCopiedMd, renderManagedMd, renderSkeleton, refreshCommand, MANUAL_HINT, EXPORT_MARKER, RSC_MARKER, CSS_MARKER, REFRESH_MARKER, BASE_MARKER } from "../src/render.js"
+import { renderCopiedMd, renderManagedMd, renderSkeleton, refreshCommand, MANUAL_HINT, EXPORT_MARKER, RSC_MARKER, CSS_MARKER, REFRESH_MARKER, BASE_MARKER, ICON_MARKER } from "../src/render.js"
 import { mergeSettings, renderSettings } from "../src/merge.js"
 import { mergeMcpJson, personalServers, FIGMA_SERVER } from "../src/mcp.js"
 import { PKG_ROOT, INCOMING_DIR, sha256 } from "../src/util.js"
@@ -71,9 +71,44 @@ test("detect: reads the primitive library from components.json's style", () => {
   assert.equal(detectProject(project(nextApp())).base, undefined)
 })
 
+test("detect: reads the icon library and RTL from components.json", () => {
+  const components = { style: "base-nova", rsc: true, iconLibrary: "hugeicons", rtl: true, tailwind: { css: "app/globals.css" } }
+  const set = detectProject(project({ ...nextApp(), "components.json": components }))
+  assert.equal(set.iconLibrary, "hugeicons")
+  assert.equal(set.rtl, true)
+
+  // Absent fields: shadcn/ui's own defaults (lucide, not RTL).
+  const bare = detectProject(project(nextApp()))
+  assert.equal(bare.iconLibrary, undefined)
+  assert.equal(bare.rtl, false)
+})
+
+test("render: the managed file names the icon library, whichever it is", () => {
+  const source = readFileSync(join(PKG_ROOT, ".claude/claude-shadcn.md"), "utf8")
+  const args = { studio: true, figma: true, rsc: true, base: "base", cssFile: "app/globals.css" }
+
+  // lucide is named with its package; an absent field means lucide too.
+  for (const iconLibrary of ["lucide", undefined]) {
+    assert.match(renderManagedMd(source, { ...args, iconLibrary }), /\*\*lucide\*\* \(the `lucide-react` package\)/, String(iconLibrary))
+  }
+
+  // Any other value is repeated verbatim rather than mapped to a package name.
+  const other = renderManagedMd(source, { ...args, iconLibrary: "hugeicons" })
+  assert.match(other, /\*\*hugeicons\*\* set/)
+  assert.match(other, /"iconLibrary": "hugeicons"/)
+  assert.doesNotMatch(other, /lucide/)
+})
+
+test("render: the RTL convention appears only on an RTL project", () => {
+  const source = readFileSync(join(PKG_ROOT, ".claude/claude-shadcn.md"), "utf8")
+  const args = { studio: true, figma: true, rsc: true, base: "base", cssFile: "app/globals.css" }
+  assert.match(renderManagedMd(source, { ...args, rtl: true }), /`ms-`\/`me-`/)
+  assert.doesNotMatch(renderManagedMd(source, { ...args, rtl: false }), /`ms-`\/`me-`|RTL-enabled/)
+})
+
 test("render: every marker the CLI replaces exists in the template", () => {
   const source = readFileSync(join(PKG_ROOT, ".claude/claude-shadcn.md"), "utf8")
-  for (const marker of [MANUAL_HINT, EXPORT_MARKER, RSC_MARKER, CSS_MARKER, REFRESH_MARKER, BASE_MARKER]) assert.ok(source.includes(marker), marker)
+  for (const marker of [MANUAL_HINT, EXPORT_MARKER, RSC_MARKER, CSS_MARKER, REFRESH_MARKER, BASE_MARKER, ICON_MARKER]) assert.ok(source.includes(marker), marker)
 })
 
 test("render: managed file resolves markers and regions", () => {
@@ -120,11 +155,13 @@ test("render: no region marker survives into an installed file", () => {
     const source = readFileSync(join(PKG_ROOT, path), "utf8")
     for (const figma of [true, false]) {
       for (const base of [undefined, "radix", "base", "aria"]) {
-        const rendered =
-          path === ".claude/claude-shadcn.md"
-            ? renderManagedMd(source, { studio: true, figma, rsc: true, base, cssFile: "app/globals.css" })
-            : renderCopiedMd(source, { studio: true, figma, rsc: true, base })
-        assert.doesNotMatch(rendered, /:start -->|:end -->/, `${path} (figma: ${figma}, base: ${base})`)
+        for (const rtl of [true, false]) {
+          const rendered =
+            path === ".claude/claude-shadcn.md"
+              ? renderManagedMd(source, { studio: true, figma, rsc: true, base, rtl, cssFile: "app/globals.css" })
+              : renderCopiedMd(source, { studio: true, figma, rsc: true, base, rtl })
+          assert.doesNotMatch(rendered, /:start -->|:end -->/, `${path} (figma: ${figma}, base: ${base}, rtl: ${rtl})`)
+        }
       }
     }
   }

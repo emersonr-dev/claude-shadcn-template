@@ -35,6 +35,18 @@ const BASE_SENTENCES = {
   aria: "This project's `components.json` uses an `aria-*` style, so `components/ui/*` wraps **React Aria** — import from `react-aria-components` and compose with its render props and `slot` wiring.",
 }
 
+// `iconLibrary` has no fixed set of values (lucide, tabler, hugeicons, phosphor,
+// remixicon …), so only lucide — shadcn/ui's default, and what an absent field
+// resolves to — is named with its package. Anything else is repeated verbatim
+// rather than mapped to a package name this tool would have to keep current.
+const LUCIDE_SENTENCE =
+  "Icons come from **lucide** (the `lucide-react` package) — shadcn/ui's default, and what this project's `components.json` resolves to. Import every icon from it; don't mix icon sets in one project."
+
+function iconSentence(iconLibrary) {
+  if (!iconLibrary || iconLibrary === "lucide") return LUCIDE_SENTENCE
+  return `Icons come from the **${iconLibrary}** set, which this project's \`components.json\` selects with \`"iconLibrary": "${iconLibrary}"\`. Import every icon from that library; don't mix icon sets in one project, and let \`npx shadcn@latest add\` pull the package it needs rather than adding one by hand.`
+}
+
 const UNKNOWN_BASE_SENTENCE =
   "Check which primitive library this project uses before hand-writing a wrapper around one — `components.json`'s `style` field names it (`radix-*` for Radix UI, `base-*` for Base UI, `aria-*` for React Aria), and `npx shadcn@latest info --json` reports it too."
 
@@ -46,6 +58,7 @@ export const RSC_MARKER = "`[CUSTOMIZE — RSC frameworks only]` "
 export const CSS_MARKER = "`[CUSTOMIZE: e.g. app/globals.css for Next.js App Router, src/index.css for Vite]`"
 export const REFRESH_MARKER = "`[REFRESH-COMMAND]`"
 export const BASE_MARKER = "`[PRIMITIVE-BASE]`"
+export const ICON_MARKER = "`[ICON-LIBRARY]`"
 
 const BIN_INVOCATION = "npx claude-shadcn-cli init"
 const REPO_INVOCATION = "npx github:emersonr-dev/claude-shadcn-template init"
@@ -75,13 +88,13 @@ export function refreshCommand(installedAsDependency) {
  * `--no-figma` project is handed a skill that documents `/ftc` and points at a
  * mapping reference neither of which it has.
  */
-export function renderCopiedMd(source, { studio, figma, rsc, base }) {
-  return tidy(applyRegions(source, { studio, "no-studio": !studio, figma, "no-figma": !figma, rsc, ...baseRegions(base) }))
+export function renderCopiedMd(source, { studio, figma, rsc, base, rtl }) {
+  return tidy(applyRegions(source, { studio, "no-studio": !studio, figma, "no-figma": !figma, rsc, rtl, ...baseRegions(base) }))
 }
 
 /** Renders `.claude/claude-shadcn.md` for a project. */
-export function renderManagedMd(source, { studio, figma, rsc, base, cssFile, installedAsDependency }) {
-  let text = applyRegions(source, { studio, "no-studio": !studio, figma, "no-figma": !figma, rsc, ...baseRegions(base) })
+export function renderManagedMd(source, { studio, figma, rsc, base, rtl, iconLibrary, cssFile, installedAsDependency }) {
+  let text = applyRegions(source, { studio, "no-studio": !studio, figma, "no-figma": !figma, rsc, rtl, ...baseRegions(base) })
   text = replaceExact(text, MANUAL_HINT, "")
   text = replaceExact(
     text,
@@ -91,6 +104,7 @@ export function renderManagedMd(source, { studio, figma, rsc, base, cssFile, ins
   if (rsc) text = replaceExact(text, RSC_MARKER, "")
   if (cssFile) text = replaceExact(text, CSS_MARKER, `\`${cssFile}\``)
   text = replaceExact(text, BASE_MARKER, BASE_SENTENCES[base] ?? UNKNOWN_BASE_SENTENCE)
+  text = replaceExact(text, ICON_MARKER, iconSentence(iconLibrary))
   text = replaceExact(text, REFRESH_MARKER, `\`${refreshCommand(installedAsDependency)}\``)
   return tidy(text)
 }

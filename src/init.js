@@ -152,6 +152,8 @@ export async function init(cwd, opts) {
         `Package manager:  ${detection.packageManager}`,
         `RSC:              ${detection.rsc ? "yes" : "no"}`,
         `Primitives:       ${BASE_LABELS[detection.base] ?? "not readable from components.json"}`,
+        `Icons:            ${detection.iconLibrary ?? "lucide (shadcn/ui's default)"}`,
+        `RTL:              ${detection.rtl ? "yes" : "no"}`,
         `Global CSS:       ${detection.cssFile ?? "not set in components.json"}`,
         `CLAUDE.md:        ${detection.claudeMdPath ?? "none — a skeleton will be created"}`,
       ].join("\n"),
